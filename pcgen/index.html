@@ -1,0 +1,708 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>body{margin:0;font-family:system-ui,sans-serif;font-size:14px}img{max-width:100%}[hidden]{display:none!important}</style>
+</head>
+<body>
+<title>Veteran Forge</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&family=Alegreya+Sans:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: a two-column ledger — the build form on the left, a live character sheet + JSON on the right; stacks on phones */
+:root{
+  --bg:#e9e7e3; --paper:#f6f5f2; --ink:#1f2228; --muted:#5e6169; --line:#c9c6bf;
+  --blood:#8e2a22; --blood-soft:#f0dcd8; --ok:#2f6b3a; --warn:#9a5b10;
+  --display:"IM Fell English SC", "Palatino Linotype", Georgia, serif;
+  --body:"Alegreya Sans", "Segoe UI", system-ui, sans-serif;
+  --mono:"JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#17181c; --paper:#202228; --ink:#e7e5e0; --muted:#a3a39f; --line:#3a3c43;
+  --blood:#e0786c; --blood-soft:#3b2220; --ok:#7fc58b; --warn:#e2a95a; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#17181c; --paper:#202228; --ink:#e7e5e0; --muted:#a3a39f; --line:#3a3c43;
+  --blood:#e0786c; --blood-soft:#3b2220; --ok:#7fc58b; --warn:#e2a95a; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:16px/1.5 var(--body);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 48px}
+.wrap{max-width:1240px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px;border-bottom:2px solid var(--ink);padding-bottom:12px}
+h1{font:400 2.4rem/1 var(--display);margin:0;letter-spacing:.01em;text-wrap:balance}
+h1 span{color:var(--blood)}
+.sub{color:var(--muted);margin:4px 0 0;font-size:.95rem}
+.grid{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);gap:20px;align-items:start}
+@media (max-width:900px){.grid{grid-template-columns:minmax(0,1fr)}}
+section.card{background:var(--paper);border:1px solid var(--line);border-radius:6px;padding:18px;display:flex;flex-direction:column;gap:14px;min-width:0}
+h2{font:400 1.35rem/1.1 var(--display);margin:0;display:flex;align-items:baseline;gap:10px}
+h2 small{font:500 .72rem var(--body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+h3{font:700 .78rem var(--body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0}
+.col{display:flex;flex-direction:column;gap:20px;min-width:0}
+.row{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+label{display:flex;flex-direction:column;gap:4px;font-size:.82rem;font-weight:500;color:var(--muted);min-width:0}
+input,select,textarea{font:inherit;font-size:.95rem;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:7px 9px;min-width:0;width:100%}
+textarea{resize:vertical}
+input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-visible{outline:2px solid var(--blood);outline-offset:1px}
+button{font:600 .9rem var(--body);border:1px solid var(--ink);background:transparent;color:var(--ink);border-radius:4px;padding:7px 12px;cursor:pointer}
+button:hover{background:var(--ink);color:var(--paper)}
+button.primary{background:var(--blood);border-color:var(--blood);color:var(--paper)}
+button.primary:hover{filter:brightness(1.1);background:var(--blood);color:var(--paper)}
+.btns{display:flex;flex-wrap:wrap;gap:8px}
+.abil{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px}
+@media (max-width:520px){.abil{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.ab{border:1px solid var(--line);border-radius:4px;padding:8px 6px;text-align:center;display:flex;flex-direction:column;gap:2px;background:var(--bg)}
+.ab b{font:400 1rem var(--display);letter-spacing:.06em}
+.ab input{text-align:center;font:600 1.1rem var(--mono);padding:4px;background:var(--paper)}
+.ab .mod{font:600 .85rem var(--mono);color:var(--blood);font-variant-numeric:tabular-nums}
+.ab .fin{font-size:.72rem;color:var(--muted)}
+.ab .rb{color:var(--blood);font-weight:700}
+.picks{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:6px}
+.pick{display:flex;gap:8px;align-items:flex-start;border:1px solid var(--line);border-radius:4px;padding:7px 9px;font-size:.88rem;color:var(--ink);font-weight:400;cursor:pointer;flex-direction:row;background:var(--bg)}
+.pick input{width:auto;margin-top:3px;accent-color:var(--blood)}
+.pick.on{border-color:var(--blood);background:var(--blood-soft)}
+.pick.dis{opacity:.45;cursor:not-allowed}
+.pick em{display:block;font-style:normal;color:var(--muted);font-size:.8rem}
+.note{font-size:.85rem;color:var(--muted);margin:0}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.faithful-box{display:flex;flex-direction:column;gap:2px;border:1px dashed var(--line);background:var(--bg);border-radius:4px;padding:10px 12px;font-size:.9rem}
+.faithful-box .fb-label{font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.faithful-box .fb-empty{color:var(--muted)}
+.chip{display:flex;align-items:center;gap:10px;border:1px solid var(--blood);background:var(--blood-soft);border-radius:4px;padding:5px 6px 5px 10px;font-size:.88rem;min-width:0}
+.chip button{padding:3px 8px;font-size:.78rem}
+.warn{font-size:.88rem;color:var(--warn);font-weight:600;margin:0}
+.sheet .kv{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px}
+.kv div{border-top:2px solid var(--ink);padding-top:4px}
+.kv span{display:block;font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.kv strong{font:600 1.15rem var(--mono);font-variant-numeric:tabular-nums}
+.sheet ul{margin:0;padding-left:18px;font-size:.9rem}
+.sheet li{margin:2px 0}
+.tag{display:inline-block;font:600 .72rem var(--body);letter-spacing:.06em;text-transform:uppercase;padding:2px 7px;border-radius:3px;border:1px solid var(--blood);color:var(--blood)}
+.ail{border-left:3px solid var(--blood);padding:4px 10px;font-size:.88rem}
+.ail b{display:block}
+pre#json{margin:0;max-height:380px;overflow:auto;background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:12px;font:400 .78rem/1.45 var(--mono);white-space:pre}
+.status{font-size:.85rem;color:var(--ok);min-height:1.3em;margin:0}
+.ex{font-size:.8rem;background:var(--blood-soft);color:var(--ink);padding:6px 10px;border-radius:4px;margin:0}
+table.ailt{width:100%;border-collapse:collapse;font-size:.82rem}
+table.ailt td{border-top:1px solid var(--line);padding:4px 6px;vertical-align:top}
+.scroll{overflow-x:auto}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Veteran <span>Forge</span></h1>
+      <p class="sub">Five Torches Deep · retired heroes built straight to level 9 · Veterans &amp; Ailments homebrew</p>
+    </div>
+    <div class="btns">
+      <button id="btnRandom" type="button">Roll a whole veteran</button>
+      <button id="btnReset" type="button">Blank sheet</button>
+      <label class="pick" style="margin:0"><input type="file" id="importFile" accept=".json,application/json" hidden>Import JSON</label>
+    </div>
+  </header>
+
+  <p class="ex" id="exampleNote">This sheet opens with an example veteran so you can see the output. Change anything, or press Blank sheet to start fresh.</p>
+
+  <div class="grid">
+    <div class="col">
+
+      <section class="card">
+        <h2>Identity <small>step 1</small></h2>
+        <div class="row">
+          <label for="fPlayer">Player<input id="fPlayer" type="text" autocomplete="off"></label>
+          <label for="fName">Character name<input id="fName" type="text" autocomplete="off"></label>
+          <label for="fRace">Race<select id="fRace"></select></label>
+        </div>
+        <p class="note" id="raceNote"></p>
+        <div id="traitWrap" class="col" style="gap:8px">
+          <h3 id="traitHead">Racial traits: pick 2</h3>
+          <div class="picks" id="traitPicks"></div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Abilities <small>step 2</small></h2>
+        <div class="abil" id="abilBox"></div>
+        <div class="btns">
+          <button id="btnRoll" type="button">Roll six stats</button>
+        </div>
+        <div class="row" id="boostRow">
+          <label for="fBoost">Human +2 boost one<select id="fBoost"></select></label>
+          <label for="fBoost2">Human +2 boost two<select id="fBoost2"></select></label>
+        </div>
+        <div class="row" id="swapRow">
+          <label for="fSwapA">Swap rolls: ability A<select id="fSwapA"></select></label>
+          <label for="fSwapB">ability B<select id="fSwapB"></select></label>
+          <label>&nbsp;<button id="btnSwap" type="button">Swap the two scores</button></label>
+        </div>
+        <h3>Ability increases from levels 4, 6 and 8</h3>
+        <div class="row">
+          <label for="fInc4">Level 4<select id="fInc4"></select></label>
+          <label for="fInc6">Level 6<select id="fInc6"></select></label>
+          <label for="fInc8">Level 8<select id="fInc8"></select></label>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Class &amp; archetype <small>step 3</small></h2>
+        <div class="row">
+          <label for="fClass">Class<select id="fClass"></select></label>
+          <label for="fArch">Archetype<select id="fArch"></select></label>
+          <label for="fHpMethod">Level-up HP<select id="fHpMethod">
+            <option value="average">Average of die (rounded up)</option>
+            <option value="roll">Roll each level</option>
+          </select></label>
+        </div>
+        <p class="warn" id="classWarn"></p>
+        <h3>Archetype Class Abilities: pick 2</h3>
+        <div class="picks" id="archPicks"></div>
+      </section>
+
+      <section class="card" id="spellCard">
+        <h2>Spells <small>step 4</small></h2>
+        <p class="note" id="spellNote"></p>
+        <div id="spellBox" class="col" style="gap:14px"></div>
+      </section>
+
+      <section class="card">
+        <h2>Gear <small>step 5</small></h2>
+        <div class="row">
+          <label for="fArmor">Armor<select id="fArmor"></select></label>
+          <label for="fShield">Shield<select id="fShield"><option value="no">No shield</option><option value="yes">Shield (+2 AC)</option></select></label>
+          <label for="fSup">Supply carried (SUP)<input id="fSup" type="number" min="0" step="1"></label>
+        </div>
+        <div class="faithful-box" id="faithfulGear" aria-readonly="true"></div>
+        <h3>Weapons</h3>
+        <div class="row">
+          <label for="fWeaponAdd">Add a weapon<select id="fWeaponAdd"></select></label>
+        </div>
+        <div class="chips" id="weaponChips"></div>
+      </section>
+
+      <section class="card">
+        <h2>Retainers <small>home rule</small></h2>
+        <p class="note" id="retNote"></p>
+        <div class="col" id="retList" style="gap:8px"></div>
+        <div class="btns"><button id="btnRetAll" type="button">Reroll all</button></div>
+      </section>
+
+      <section class="card">
+        <h2>Veteran traits <small>homebrew</small></h2>
+        <label for="fLegend">Legend: the deed you are remembered for<input id="fLegend" type="text" autocomplete="off"></label>
+        <label for="fFaithful">Your signature and reasonably mythic magic item<input id="fFaithful" type="text" autocomplete="off" placeholder="e.g. Grudge, the notched blade that never dulls"></label>
+        <label for="fFaithfulProps">Properties (discuss with your GM)<textarea id="fFaithfulProps" rows="3" placeholder="What it does, how often, and what it costs you."></textarea></label>
+        <label for="fFortune">You're broke! Where did all your gold go?<input id="fFortune" type="text" autocomplete="off"></label>
+        <div class="col" style="gap:8px">
+          <h3>Class Abilities: all start rusty</h3>
+          <p class="note">Each needs a DC 12 check with its closest ability score to get back in the saddle. Fail and it doesn't work, or only partly works (GM's call). Clear the flag in the PC tracker once it succeeds.</p>
+          <div class="col" id="rustList" style="gap:6px"></div>
+        </div>
+        <div class="row">
+          <label for="fWisdom">Wisdom of Age<select id="fWisdom"></select></label>
+        </div>
+        <p class="note" id="wisdomText"></p>
+        <h3>Ailments: pick or roll 2 from the d100 list</h3>
+        <label for="fAilFilter">Filter the list<input id="fAilFilter" type="search" autocomplete="off" placeholder="e.g. torch, stealth, undead"></label>
+        <div class="row">
+          <label for="fAil1">Ailment one<select id="fAil1"></select></label>
+          <label for="fAil2">Ailment two<select id="fAil2"></select></label>
+        </div>
+        <div class="btns"><button id="btnAil" type="button">Roll d100 twice</button></div>
+        <div id="ailDetail" class="col" style="gap:8px"></div>
+      </section>
+
+    </div>
+
+    <div class="col">
+      <section class="card sheet" id="sheet" aria-live="polite"></section>
+
+      <section class="card">
+        <h2>JSON output <small>for downstream tools</small></h2>
+        <div class="btns">
+          <button class="primary" id="btnCopy" type="button">Copy JSON</button>
+        </div>
+        <p class="status" id="status"></p>
+        <pre id="json" tabindex="0"></pre>
+      </section>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+const AB=["STR","DEX","CON","INT","WIS","CHA"];
+const mod=s=>s<=3?-4:s<=5?-3:s<=7?-2:s<=9?-1:s<=11?0:s<=13?1:s<=15?2:s<=17?3:4+Math.floor((s-18)/2); // homebrew: 20-21 = +5, 22-23 = +6
+const fmt=n=>(n>=0?"+":"")+n;
+const d=n=>1+Math.floor(Math.random()*n);
+const rollN=(n,s)=>Array.from({length:n},()=>d(s)).reduce((a,b)=>a+b,0);
+const $=id=>document.getElementById(id);
+
+const RACES={ // homebrew: rolled stats + racial boosts
+  Human:{bonus:{},choose:true,dice:4,drop:1,req:{},note:"Roll 4d6, drop the lowest, six times. Assign or swap rolls freely. +2 to two different abilities of your choice. Any class. No racial traits."},
+  Dwarf:{bonus:{CON:2,STR:2},dice:4,drop:1,req:{Thief:["DEX",13],Mage:["INT",13]},note:"Roll 4d6, drop the lowest, six times. Assign or swap rolls freely. +2 CON and +2 STR. Thief needs 13+ DEX, Mage 13+ INT."},
+  Elf:{bonus:{DEX:2,INT:2},dice:4,drop:1,req:{Warrior:["STR",13],Zealot:["WIS",13]},note:"Roll 4d6, drop the lowest, six times. Assign or swap rolls freely. +2 DEX and +2 INT. Warrior needs 13+ STR, Zealot 13+ WIS."},
+  Halfling:{bonus:{WIS:2,CHA:2},dice:4,drop:1,req:{Warrior:["STR",13],Mage:["INT",13]},note:"Roll 4d6, drop the lowest, six times. Assign or swap rolls freely. +2 WIS and +2 CHA. Warrior needs 13+ STR, Mage 13+ INT."}
+};
+function racial(a){const R=RACES[state.race];return (R.bonus[a]||0)+(R.choose&&state.boosts.includes(a)?2:0);}
+const TRAITS={ // homebrew racial traits, adapted from classic D&D race features
+  Dwarf:[
+    ["Darksight","See in darkness out to 60 ft as if it were dim light."],
+    ["Dwarven Resilience","Advantage on checks against poison, and poison damage you take is halved."],
+    ["Stonecunning","Advantage on checks about stonework, mining, and underground direction. You can't get lost underground."],
+    ["Dwarven Toughness","+1 HP per level (+9 HP at level 9)."],
+    ["Armor-Bred","Heavy armor gives you no disadvantage on stamina checks and counts as 4 load."],
+    ["Axe and Hammer Training","Proficient with the hatchet, war axe, warhammer, and lumber axe whatever your class."]],
+  Elf:[
+    ["Darksight","See in darkness out to 60 ft as if it were dim light."],
+    ["Keen Senses","Advantage on sight and listening checks."],
+    ["Fey Ancestry","Advantage against charm effects, and magic can't put you to sleep."],
+    ["Trance","Four hours of trance give you a full night's rest, so you can keep watch and still rest."],
+    ["Elven Weapon Training","Proficient with the arming sword, longsword, hunting bow, and war bow whatever your class."],
+    ["Elven Cantrip","Know one arcane cantrip, cast with INT and no check."]],
+  Halfling:[
+    ["Lucky","When you roll a natural 1 on a d20 check, reroll it once and use the new roll."],
+    ["Brave","Advantage against fear effects."],
+    ["Nimble","You can move through the space of any creature larger than you, and have advantage to escape a grapple."],
+    ["Naturally Stealthy","You can hide behind a creature larger than you, with advantage on that stealth check."],
+    ["Stout Resilience","Advantage on checks against poison, and poison damage you take is halved."],
+    ["Sure Shot","+1 to attack with thrown weapons, slings, and hunting bows."]]
+};
+const RACE_WEAPONS={"Axe and Hammer Training":["Hatchet","War axe","Warhammer","Lumber axe"],"Elven Weapon Training":["Arming sword","Longsword","Hunting bow","War bow"]};
+function hasTrait(t){return (state.traits||[]).includes(t);}
+function weaponProf(w,martial){return w[2]==="simple"||martial||Object.entries(RACE_WEAPONS).some(([t,l])=>hasTrait(t)&&l.includes(w[0]));}
+function withRace(a){return state.base[a]+racial(a);}
+
+const CLASSES={
+  Warrior:{startHp:6,die:10,armor:["Heavy","Light","None"],weapons:"All",abilityProf:["STR","CON"],checks:["Coordination","Tactics","Will"],caster:null,
+    kit:["Shield","2 one-handed weapons","1 two-handed weapon","Smith's kit (1 load, 2 SUP to refill)","Healer's kit (1 load, 2 SUP to refill)","5 rations (1 load, 5 SUP to refill)","3 rolls on Sundries"],
+    levels:{1:"Starting HP, warrior equipment",2:"Counter-attack in melee as a quick action up to twice a fight",3:"Pick a warrior archetype; gain one of its features",4:"+1 to an ability score",5:"Make two full attacks as one active action",6:"+1 to an ability score",7:"Pick one new feature from your archetype",8:"+1 to an ability score",9:"Make three full attacks as one active action"},
+    arch:{
+      Barbarian:{checks:["Intimidation","Endurance","Travel"],feats:["+6 permanent HP","Melee crit 19-20","Adv to intimidate","Immune to fear","+10' move speed","Adv to endurance","Rage: +3 dmg dealt and taken while active"]},
+      Ranger:{checks:["Wilderness","Creatures","Perception"],feats:["Immune to weather","Adv to track or hunt","Ignore difficult terrain","Adv to monster info","Ranged crit 19-20","Only need 1/2 sleep","Adv to stealth","Can't get lost"]},
+      Fighter:{checks:["Medicine","Engineering","Diplomacy"],feats:["+1 permanent AC","Adv to diplomacy","+1 dmg all attacks","Adv to strategy","Orders: movement, ally can active action","Phalanx: allies gain +1 AC when near you"]}
+    }},
+  Thief:{startHp:4,die:6,armor:["Light","None"],weapons:"All",abilityProf:["DEX","INT"],checks:["Stealth","Deception","Senses","Tools"],caster:null,
+    kit:["Ammunition (1 load, 1 SUP to refill)","1 use poison (0 load, 2 SUP to refill)","Thief's kit (1 load, 5 SUP to refill)","5 rations (1 load, 5 SUP to refill)","5 rolls on Sundries"],
+    levels:{1:"Starting HP, thief equipment",2:"Try to stealth as a quick action instead of an active action",3:"Pick a thief archetype; gain one of its features",4:"+1 to an ability score",5:"Use a quick action to halve one hit's damage against you",6:"+1 to an ability score",7:"Pick one new feature from your archetype",8:"+1 to an ability score",9:"Proficiency bonus is doubled for your archetype checks"},
+    arch:{
+      Assassin:{checks:["Intimidation","Insight","Tracking"],feats:["Craft custom poison","Stealth crit 18-20","Adv to stealth","Adv to disguise","Stealth after attack","Adv to track target","Backstab: +2d6 damage vs unaware target"]},
+      Rogue:{checks:["Infiltration","Athletics","Investigation"],feats:["Always know value","Adv to lockpicking","Natural climb speed","Adv vs traps","+4 max load","Stealth at full speed","Dodge: trap and area damage is halved"]},
+      Bard:{checks:["Perform","Inspire","Diplomacy"],feats:["Immune to charm","Adv to charm","Adv to lie or deceive","Adv to perform","Know CHA tongues","Auto-detect magic","Healing song: allies heal +1d8 HP per rest"]}
+    }},
+  Zealot:{startHp:5,die:8,armor:["Heavy","Light","None"],weapons:"Simple",abilityProf:["WIS","CHA"],checks:["Spellcasting","History","Insight"],caster:"Divine",
+    kit:["Shield","1 one-handed simple weapon","Holy symbol (divine focus)","Healer's kit (1 load, 2 SUP to refill)","5 rations (1 load, 5 SUP to refill)","2 rolls on Sundries"],
+    levels:{1:"Starting HP, zealot equipment; divine spellcasting",2:"1/safe rest, heal an ally for 1d6/level HP as an active action",3:"Pick a zealot archetype; gain one of its features",4:"+1 to an ability score",5:"Innately sense evildoers, sadists, and agents of chaos",6:"+1 to an ability score",7:"Pick one new feature from your archetype",8:"+1 to an ability score",9:"Enemies roll morale at disadvantage while you're conscious"},
+    arch:{
+      Cleric:{checks:["Healing","Politics","Divine magic"],feats:["Healing deals +2 HP","Adv to turn undead","Adv to knowledge","Adv to healing","Allies adv vs Injury","+4 damage vs evil","Bless: active action, ally has +2 next check"]},
+      Paladin:{checks:["Instinct","Endurance","Athletics"],feats:["Martial proficiency","Auto-detect lies","Adv to help allies","+1 permanent AC","Vow: keep a holy vow, gain +2 HP and dmg","Lay on hands: heal 1 HP per level per day"]},
+      Druid:{checks:["Wilderness","Creatures","Druidic magic"],feats:["Speak with nature","Wildskin: 1/rest, become a 1 HP tiny creature","Leave no trail","Immune to poison","No need to eat","Adv to wilderness"]}
+    }},
+  Mage:{startHp:4,die:6,armor:["None"],weapons:"Simple",abilityProf:["CON","INT"],checks:["Spellcasting","Finesse","Negotiation"],caster:"Arcane",
+    kit:["1 one-handed simple weapon","A shield or 1 hunting bow","Potionery glassware","Scribe's kit (0 load, 5 SUP to refill)","Spell components (3 levels, 6 SUP)","2 rations (0 load, 2 SUP to refill)","1 roll on Sundries"],
+    levels:{1:"Starting HP, mage equipment; arcane spellcasting",2:"1/rest, reduce next damage by INT mod; quick, concentration",3:"Pick a mage archetype; gain one of its features",4:"+1 to an ability score",5:"1/safe rest, spend 10 min and dispel any spell below your level",6:"+1 to an ability score",7:"Pick one new feature from your archetype",8:"+1 to an ability score",9:"Pick 1 known spell up to spell level 3. It is now a cantrip for you"},
+    arch:{
+      Sorcerer:{checks:["Charm","Chaos magic","Willpower"],feats:["AC 12 + DEX mod","Quickcast: pick one known spell, cast it as a quick action","Fire damage halved","Adv to resist magic","Adv to charm","+4 permanent HP"]},
+      Wizard:{checks:["Diplomacy","Insight","Arcane magic"],feats:["Pick +1 cantrip","Adv to potions","Adv to magic items","Adv to lore / info","Gain a familiar","Can reroll a mishap","Mastery: double 1 spell's area or duration"]},
+      Warlock:{checks:["Profane magic","Intimidate","Stealth"],feats:["Wear light armor","Sacrifice: damage self (max lvl) for an equal bonus to next damage","Martial proficiency","Adv to intimidate","No need to eat","Darksight"]}
+    }}
+};
+
+const SPELLS={
+ Arcane:{
+  0:[["Illuminate","Create torchlight from your hand. Concentration"],["Subtle Force","Telekinesis. Move up to 5 lbs 30' away. Concentration"],["Whispermind","Send a brief psychic message to 1 target in line of sight"],["Flickerheat","Weakly transfer heat; light a candle, cool a cup of water"],["Legerdemain","Perform subtle illusions: teleport coin, change colors"]],
+  1:[["Charm","One creature in 30' obeys you. Attack. Concentration"],["Sleep","2HD/level worth of targets in 30' fall asleep. Attack. 8 hrs"],["Arcane Arrow","Fire a magic bolt up to 100'. Deal 1d4/level dmg. Attack"],["Discern Magic","Sense all near magic. Roll check to learn its function"],["Abjure","Check to ignore a damaging area effect (trap). Quick"]],
+  2:[["Shield Aura","Enemy ranged attacks have disadv vs you. Concentration"],["Gust of Force","Enemies in 15' cone knocked back 10' and prone. Attack"],["Amplify Gravity","A 20' area forces 5' speed. Enemy resist. 1 min/level"],["Knock","A mundane door or lock in line of sight opens"],["Shadowfield","Blanket a 30' area in magical darkness. 1 min/level"]],
+  3:[["Invisibility","You or one touched target is invisible. Concentration. 1 hr"],["Dispel Arcanum","Remove one spell or effect up to your highest spell level"],["Furyfire","All (including allies) in 20' area take 1d6/lvl damage. Atk"],["Lexicon","Speak and read any language (GM disc). 1 hr/lvl"],["Apparition","Immobile illusion up to a 10' cube. Enemy resist. 1 min/lvl"]],
+  4:[["Induce Terror","All targets that can hear you roll Morale at disadv"],["Enervate","One target in 30' goes to 4 STR (-3). Attack. 1 min/lvl"],["Sculpt Element","Conjure or control 1 element. Concentration. 1 min/lvl"],["Astral Rift","Teleport an object you touch to a point in sight. DC for size"],["Truesight","You and 1 ally/lvl ignore dark and invisibility. 10 mins"]],
+  5:[["Wayfarer","You or one target teleports to any known place (this plane)"],["Confound","One target/lvl in 30' goes to 4 INT (-3). Attack. 10 mins"],["Dissolve","One target or object you touch melts and/or dies. Atk"],["Deadly Mist","Targets in 20' area resist or take 2d6/lvl dmg. 10 mins"],["Infernal Call","Summon a demon of your lvl. Check for obedience. 1 hour"]]
+ },
+ Divine:{
+  0:[["Illuminate","Create torchlight from your hand. Concentration"],["Reforge","Mend or repair a mundane object up to a human in size"],["Providence","You or one touched ally gets +1 to next check. Quick"],["Stable Touch","Automatically stabilize one dying target you touch"],["Stench of Evil","Smell evil aligned creatures. Concentration"]],
+  1:[["Suture","Heal 1d8 HP to 1 target in 30' in line of sight. Quick"],["Turn Undead","Undead of HD less than lvl in 30' flee. Atk"],["Sacrosanct","Advantage to resist attacks and effects from evil enemies"],["Condemn","Incapacitated targets that can hear you instantly die"],["Holy Scepter","Summon a 1d10 + WIS mace. You're proficient. 1 min/lvl"]],
+  2:[["Impassable","2HD/lvl worth of targets in 30' go to 0' speed. Atk. 1 hour"],["Purify","Cure poison or blight from an area. Roll check for size"],["Divine Vigor","Allies that hear you gain +1 to all checks. Concentration"],["Sustenance","One target/lvl is granted nourishment equal to a meal"],["Zeal","You or 1 ally become immune to fear for 1 min/lvl"]],
+  3:[["Angelic Aura","You and allies in 10' gain +2 AC. Concentration. 1 min"],["Hexbreak","Remove one curse or disease from 1 object. Check vs DC"],["Pacify","All targets in 30' have no wish to fight. Atk. 1 min/lvl"],["Smite","You or 1 ally gain advantage to all atks vs evil. 1 turn/lvl"],["Field of Quiet","All sound in 30' is silenced. Concentration"]],
+  4:[["Deviscerate","Heal 3d8 HP of 1 target/lvl in 30' of you"],["Lay to Rest","Kill all undead of HD less than lvl in 30'. Atk"],["Wrath","You or 1 touched ally can attack as a quick. 1 min"],["Holy Dawn","Light fills the area. 1d4 dmg to evil targets. Atk. 10 min"],["Retribution","If you or 1 ally get hit, enemy takes 1d8 dmg. 1 min/lvl"]],
+  5:[["Geas","A touched target follows your quest til death. Enemy resist"],["Commune","Ask your god questions. They answer up to lvl in words"],["Sanctify","All cursed or poisoned allies in 30' are cured. Magic check"],["Sanctuary","Create 20' divine area. Enemy resist to enter. Concentration"],["Transcendence","Target 30' area. Allies within heal 4d8. Enemies take 4d8"]]
+ }
+};
+const KNOWN9={1:5,2:5,3:5,4:3,5:1}; // FTD spells known at level 9
+
+const WEAPONS=[
+ ["Arming sword","1d10 + STR","martial","1h melee, slashing"],["Club","1d6 + STR","simple","1h melee, bludgeoning"],
+ ["Crossbow","1d12 + DEX/WIS","martial","2h ranged, action to reload"],["Dagger","1d6 + STR/DEX","simple","1h melee, stealthy"],
+ ["Halberd","1d12 + STR/INT","martial","2h melee, 10' reach"],["Hatchet","1d6 + STR","simple","1h melee"],
+ ["Hunting bow","1d8 + DEX","simple","2h ranged"],["Javelin","1d6 + STR","simple","1h melee or ranged"],
+ ["Longspear","1d12 + STR","martial","2h melee, 10' reach"],["Longsword","1d12 + STR","martial","2h melee, slashing"],
+ ["Lumber axe","1d8 + STR","simple","2h melee"],["Mace","1d6 + STR","simple","1h melee"],
+ ["Poleaxe","1d12 + STR","martial","2h melee"],["Quarterstaff","1d8 + STR","simple","2h melee, 10' reach"],
+ ["Shortspear","1d8 / 1d6 + STR","simple","2h or 1h melee"],["War axe","1d10 + STR","martial","1h melee"],
+ ["War bow","1d12 + DEX/STR","martial","2h ranged"],["Warhammer","1d10 + STR","martial","1h melee"]
+];
+
+const AILMENTS=[["Bad Knee", "Climbing, jumping, or running more than a round", "Disadvantage on the check. After a long march, speed -5 ft until a rest.", "Joints & Bones"], ["Brittle Bones", "Falling or being knocked prone", "Falls deal one extra damage die; standing up costs your Quick action.", "Joints & Bones"], ["Bad Back", "Lifting, shoving, or carrying more than half your max load", "Max load -2. Checks to lift or shove are at disadvantage.", "Joints & Bones"], ["Trick Shoulder", "Your first two-handed or thrown attack each fight", "On a natural 1-3 the shoulder pops out; lose your next Quick action.", "Joints & Bones"], ["Gout Foot", "A day of rich food in town, or a forced march", "Speed -5 ft for the next day, and stealth checks at disadvantage from the limp.", "Joints & Bones"], ["Arthritic Hands", "Fine work in cold or damp places", "Disadvantage on tool and lockpick checks. Drawing a weapon costs your Movement instead of a Quick action.", "Joints & Bones"], ["Stiff Mornings", "First combat after a long rest", "You lose your Quick action in the first round.", "Joints & Bones"], ["Creaky Joints", "Sneaking in armor or over old floors", "Stealth at disadvantage. On a failure the GM rolls a travel turn immediately.", "Joints & Bones"], ["Weak Ankle", "Moving through difficult terrain in combat", "DC 11 DEX check or fall prone.", "Joints & Bones"], ["Rain-Hip", "Weather about to turn", "You always know a storm is coming within a day, but the day it arrives your speed is -5 ft.", "Joints & Bones"], ["Bent Fingers", "Fighting with a dagger or other small weapon", "Damage -1 with that weapon.", "Joints & Bones"], ["Can't Kneel", "Searching low, crawling, or praying at an altar", "It takes twice as long, and crawling counts as harsh terrain.", "Joints & Bones"], ["Failing Eyes", "Ranged attack beyond short range, or reading by torchlight", "Disadvantage.", "Senses"], ["Hard of Hearing", "Listening at doors, hearing whispers, sound-based perception", "Disadvantage. The GM may feed you a misheard version.", "Senses"], ["Night Blindness", "Anything beyond 15 ft of a light source", "Treat dim light as darkness.", "Senses"], ["No Sense of Smell", "Gas, rot, smoke, or poison in food", "The GM never gives you scent cues. You have advantage against stench and nausea effects.", "Senses"], ["Ringing Ears", "Any loud blast, roar, or thunder", "Disadvantage on listening checks until your next rest.", "Senses"], ["One Good Eye", "Being flanked", "Once per session the GM can let an enemy strike from your blind side with advantage.", "Senses"], ["Squinter", "Brilliant light, snow glare, or magical flashes", "Disadvantage on sight checks and attacks in brilliant light.", "Senses"], ["Dull Tongue", "Tasting potions, spoiled rations, or a suspicious drink", "Identifying anything by taste automatically fails.", "Senses"], ["Numb Fingertips", "Searching by touch, picking pockets, feeling for traps in the dark", "Disadvantage.", "Senses"], ["Colors Muddled", "Telling apart colored runes, gems, banners, or potions", "Once per session the GM may describe the wrong color to you.", "Senses"], ["Torch-Dazzled", "Each time a torch or lantern is lit near you", "Disadvantage on your next attack.", "Senses"], ["Spectacles", "Any natural 1 on a physical check, or an enemy crit against you", "The spectacles break (DUR 1). Until repaired you have Failing Eyes.", "Senses"], ["Winded", "Sprinting, or a second combat without a short rest", "DC 12 CON check or you can't Move this round.", "Wind & Stamina"], ["Wheezy Lungs", "Smoke, dust, or freezing air", "DC 11 CON check or you lose your Active action to coughing.", "Wind & Stamina"], ["Loud Cough", "The party is hidden", "Once per session the GM can let your cough break the party's stealth.", "Wind & Stamina"], ["Tires Fast", "Long travel", "Your resilience counts as CON -3.", "Wind & Stamina"], ["Racing Heart", "The first time each session you drop below half HP", "Lose your next Movement action while you catch your breath.", "Wind & Stamina"], ["Needs a Nap", "Afternoons", "Unless you rest an hour by midday, disadvantage on INT and WIS checks until nightfall.", "Wind & Stamina"], ["Cold Bones", "Cold weather, deep water, or night watch outdoors", "Lose 1 extra resilience each hour.", "Wind & Stamina"], ["Heat Sweats", "Hot places, or heavy armor for more than an hour", "Lose 1 extra resilience each hour. Heavy armor counts as 6 load for you.", "Wind & Stamina"], ["Slow Healer", "Healing from rest", "Heal 1 HP fewer per night of safe rest (minimum 1).", "Wind & Stamina"], ["Light Sleeper", "Resting in unsafe places", "You are never surprised in camp, but you heal no HP from unsafe rest.", "Wind & Stamina"], ["Heavy Sleeper", "An alarm or ambush while you sleep", "DC 13 WIS check to wake, or you sleep through the first round.", "Wind & Stamina"], ["Delicate Stomach", "Rough rations, foreign food, or swamp water", "DC 11 CON check or lose 2 resilience.", "Wind & Stamina"], ["Seasick", "Boats, flying mounts, or swaying bridges", "Disadvantage on all checks while aboard and for an hour after.", "Wind & Stamina"], ["Forgetful", "Once per session, at the GM's call", "You forgot one mundane item: spend 1 SUP or do without it.", "Memory & Mind"], ["Names Escape You", "Meeting or greeting NPCs", "You use the wrong name. -2 on your first reaction roll with any new NPC.", "Memory & Mind"], ["Outdated Map", "Navigating somewhere you knew decades ago", "You remember it as it was. The GM gives you one wrong detail.", "Memory & Mind"], ["Repeats Himself", "Planning or briefing the party", "The plan takes twice as long; the GM may advance a travel turn.", "Memory & Mind"], ["Half-Remembered Incantations", "Your first cast of each spell level per session", "+1 to that spellcasting DC.", "Memory & Mind"], ["Where Are My Keys", "Fetching a specific item from your pack in combat", "It costs your Movement instead of a Quick action.", "Memory & Mind"], ["Lost Track of Time", "Hours passing underground", "You only notice your torch has died when it goes out. Spend 1 extra SUP of torches per day.", "Memory & Mind"], ["Old Instincts", "Hearing a command or bugle call from your old war", "DC 11 WIS check or you obey it at once.", "Memory & Mind"], ["Tunnel Focus", "Fighting more than one enemy", "Enemies flanking you have advantage.", "Memory & Mind"], ["Daydreamer", "Long journeys and night watches", "Disadvantage on perception during travel turns.", "Memory & Mind"], ["Baffled by New Coin", "Buying, selling, or haggling", "You overpay by 10% unless you spend an hour counting.", "Memory & Mind"], ["Ledger of Grudges", "Dealing with a faction that wronged you", "Disadvantage on all social checks with them.", "Memory & Mind"], ["Can't Read Small Print", "Reading scrolls, maps, or contracts below well-lit conditions", "Scroll casting checks at disadvantage; you miss one clause in any contract.", "Memory & Mind"], ["Set in Your Ways", "Persuading anyone young, new, or modern", "Disadvantage, but advantage on Intimidate against the same people.", "Temperament"], ["War Stories", "You start telling one (player's choice)", "CHA vs DC 12. Pass: one ally gets advantage on their next check. Fail: a torch burns down one extra turn.", "Temperament"], ["Night Terrors", "Short rest in a dungeon", "DC 12 WIS check or you regain no HP from that rest.", "Temperament"], ["Short Fuse", "Being insulted or doubted", "DC 11 WIS check or you make a scene. Reactions from that group -2.", "Temperament"], ["Grumpy Before Breakfast", "The first hour after waking", "Disadvantage on CHA checks.", "Temperament"], ["Won't Retreat", "The party retreats or flees", "DC 11 WIS check to go with them; on a failure you hold the line one more round.", "Temperament"], ["Stubborn Pride", "Being offered help or healing", "You refuse the first offer each session. Accepting it anyway costs a Grit token.", "Temperament"], ["Worrier", "A fight you saw coming", "Advantage to spot ambushes, but you start the fight without a Quick action from fussing.", "Temperament"], ["Soft Heart", "The weak or young in danger", "You must try to help them, whatever it costs the plan.", "Temperament"], ["Bitter Rival", "Once per adventure", "The GM brings your old rival into the story at the worst moment.", "Temperament"], ["Paranoid", "Accepting food, deals, or gifts", "Disadvantage on CHA checks while you inspect everything, but the first poisoned drink each adventure never fools you.", "Temperament"], ["Nostalgic", "Seeing a relic or place from the old days", "You lose your Movement the first round you see it while you reminisce.", "Temperament"], ["Backseat Commander", "Watching a younger ally make a mistake", "You correct them out loud. The party's stealth that round is at disadvantage.", "Temperament"], ["Haunted by the Fallen", "Seeing undead or open graves", "DC 11 WIS check or disadvantage on attacks against undead for one round.", "Temperament"], ["Superstitious", "Breaking an omen: spilled salt, a black cat, the 13th step", "Disadvantage on your next check until you spend a minute on a warding ritual.", "Temperament"], ["Pipe Smoker", "Four hours without a smoke", "Disadvantage on WIS checks. Smoking costs 1 SUP a day and leaves a trail beasts can follow.", "Habits & Vices"], ["Fond of Drink", "A tavern night or a celebration", "DC 12 CON check or disadvantage on all checks until midday.", "Habits & Vices"], ["Snores", "Camping outdoors", "Travel turns rolled during your sleep are at disadvantage.", "Habits & Vices"], ["Collector", "Finding trinkets in a dungeon", "You must pocket one useless curio per dungeon. +1 load each.", "Habits & Vices"], ["Ration Hoarder", "Packing for an adventure", "Max SUP is INT -2, but once per adventure you produce a free day of rations.", "Habits & Vices"], ["Talks to Himself", "Sneaking alone", "Disadvantage on solo stealth checks.", "Habits & Vices"], ["Must Have Tea", "Each morning", "Spend 1 SUP on tea or take disadvantage on your first check of the day.", "Habits & Vices"], ["Fidgets", "Staying hidden for more than a minute", "DC 11 WIS check or you give yourself away.", "Habits & Vices"], ["Gambler", "Dice, cards, or a wager nearby", "You must bet. Lose 1d20 gp unless you pass a DC 12 CHA check.", "Habits & Vices"], ["Early to Bed", "Anything after midnight", "Disadvantage on all checks.", "Habits & Vices"], ["Hums Marching Songs", "Quiet moments", "Once per session the GM can spoil the party's stealth. Retainers you lead have advantage on morale.", "Habits & Vices"], ["Overpacker", "Leaving town", "You start every adventure with 2 extra load of things you insist you need.", "Habits & Vices"], ["Old Wound", "An enemy scores a critical hit on you", "Take an extra 1d4 damage as the old scar tears.", "Old Scars & Curses"], ["Shaky Hands", "Spellcasting check, lockpicking, or disarming a trap", "Fail by 1 or 2 and it counts as a full failure; for casters, a mishap.", "Old Scars & Curses"], ["Arrowhead Still In", "Cold weather or wearing heavy armor", "The first hit you take each fight deals +1 damage.", "Old Scars & Curses"], ["Dragonfire Scars", "Taking fire damage", "+2 fire damage taken, but advantage to resist fear from dragons.", "Old Scars & Curses"], ["Lich's Mark", "Undead within 30 ft", "They always know where you are. You can't hide from undead.", "Old Scars & Curses"], ["Echo of a Cursed Blade", "Rolling a natural 20 on an attack", "DC 11 WIS check or the old curse smothers it: normal damage instead of double.", "Old Scars & Curses"], ["Missing Fingers", "Two-handed grips and fine tool work", "Disadvantage on tool checks. You can't dual-wield.", "Old Scars & Curses"], ["Wooden Leg", "Swimming, climbing, or chases", "Disadvantage, and your speed is 25 ft. You can't be tripped by that leg.", "Old Scars & Curses"], ["Faded Holy Tattoo", "Divine healing cast on you", "You heal half the amount. The old god holds a grudge.", "Old Scars & Curses"], ["Glass Jaw", "A critical hit against you", "DC 11 CON check or lose your next turn, dazed.", "Old Scars & Curses"], ["Poison Never Left", "Checks against poison, venom, or disease", "Disadvantage on those CON checks.", "Old Scars & Curses"], ["Fey Debt Overdue", "Full-moon nights", "Once per adventure a fey creditor appears to collect, in coin or in favors.", "Old Scars & Curses"], ["Spell-Burned Nerves", "Being targeted by an arcane spell", "Disadvantage to resist it, but you feel any magic within 10 ft.", "Old Scars & Curses"], ["Stitched Belly", "Heavy lifting or being grappled", "DC 11 CON check or take 1d4 damage as the stitches pull.", "Old Scars & Curses"], ["Old Debts", "Entering any town", "The GM rolls 1d6; on a 1 a creditor finds you.", "Reputation & Society"], ["Wanted, Long Ago", "Meeting guards or officials", "If they know your renown, their reaction roll is -4.", "Reputation & Society"], ["Living Legend", "Anywhere public", "You can't go unnoticed. Disguise and blending-in checks at disadvantage.", "Reputation & Society"], ["Outlived Your Friends", "Leading retainers and hench", "Max hench -1. When a retainer dies, the rest roll morale at disadvantage.", "Reputation & Society"], ["Estranged Family", "Once per adventure", "A relative turns up needing something from you, right now.", "Reputation & Society"], ["Tall Tales", "Persuading anyone who has heard of you", "Disadvantage; they assume you're exaggerating.", "Reputation & Society"], ["Pension Owed", "Passing through your old lord's lands", "You must press your claim, and lose a day to clerks each time.", "Reputation & Society"], ["Out of Fashion", "Courts and high society", "Disadvantage on CHA checks with nobles; your gear marks you as an antique.", "Reputation & Society"], ["Retired Twice Already", "Hiring retainers", "They expect you to quit again and demand double pay up front.", "Reputation & Society"]];
+const WISDOM=[["Dirty Fighting", "Once per combat, impose disadvantage on an enemy's attack with a trick you learned the hard way.", "Battle-Wise"], ["Patient Strike", "If you hold your action for a full round in a fight, your next attack has advantage.", "Battle-Wise"], ["Know When to Run", "Advantage on retreat and chase checks when you are the one fleeing.", "Battle-Wise"], ["Shield-Wall Habit", "While you stand next to an ally, you both get +1 AC.", "Battle-Wise"], ["Pick the Leader", "Once per fight, point out the enemy leader. Allies have advantage on their first attack against it.", "Battle-Wise"], ["Old Footwork", "Once per fight, step out of melee without any enemy getting an attack on you.", "Battle-Wise"], ["Measured Breath", "Once per session, turn one missed attack into a hit for half damage.", "Battle-Wise"], ["Battlefield Eye", "In a fight you saw coming, you act first in the first round regardless of DEX.", "Battle-Wise"], ["Disarm", "Once per fight, on a hit, knock the enemy's weapon away instead of dealing damage.", "Battle-Wise"], ["Second Wind", "Once per session, when you drop below half HP, recover HP equal to your level as a Quick action.", "Battle-Wise"], ["Pace Yourself", "Your torch and supply use count as one step lower on the first day of an expedition.", "Road-Wise"], ["Old Soldier's Pack", "Once per adventure, declare you packed one mundane item you never listed. You still pay its SUP.", "Road-Wise"], ["Weather Nose", "Each morning the GM tells you the day's weather truthfully.", "Road-Wise"], ["Camp Craft", "When you set up camp, everyone heals 1 extra HP from unsafe rest.", "Road-Wise"], ["Trail Memory", "When the party rolls to return along a route you walked, everyone rolls with advantage.", "Road-Wise"], ["Forager's Eye", "Advantage on foraging checks.", "Road-Wise"], ["Torch Discipline", "Once per day, a torch you light burns for 2 hours instead of 1.", "Road-Wise"], ["Iron Gut", "Rotten, strange, or foreign food never costs you resilience.", "Road-Wise"], ["Ration Stretcher", "Once per adventure, one day of your rations feeds the whole party.", "Road-Wise"], ["Road-Hardened", "Your resilience is CON +2.", "Road-Wise"], ["Old Contacts", "Once per adventure, name a contact from your past in this town. The GM decides how happy they are to see you.", "Worldly"], ["Read the Room", "Once per session, ask the GM how one NPC truly feels about you; the GM tells you their reaction result.", "Worldly"], ["Haggler", "You buy at 10% less and sell at 10% more.", "Worldly"], ["Known Face", "Once per session, the GM rolls your renown with advantage, and that NPC's reaction can't be worse than cautious.", "Worldly"], ["Tavern Ears", "An evening in a tavern gets you one true rumor about your current goal.", "Worldly"], ["Old Pardon", "Once per campaign, a lord who owes you drops one charge against you or an ally.", "Worldly"], ["Courtly Manners", "Advantage on CHA checks with nobles and officials.", "Worldly"], ["Calm Voice", "Once per session, before blades are drawn, raise an NPC's reaction by one step.", "Worldly"], ["Lingua Franca", "You speak a smattering of every common tongue; simple talk needs no check.", "Worldly"], ["Teacher", "Once per session, lend an ally your proficiency bonus on one check they aren't proficient in.", "Worldly"], ["Seen It Before", "Once per session, ask the GM one true question about a monster, trap, or ruin.", "Hard-Won Knowledge"], ["Trap Sense", "You get a check to spot every trap the GM forewarns, even when you didn't say you were searching.", "Hard-Won Knowledge"], ["Monster Lore", "Once per session, name one weakness of a creature you've fought before; the GM confirms or corrects you.", "Hard-Won Knowledge"], ["Old Maps", "Once per adventure, you once saw a map of this place: the GM sketches one area for you.", "Hard-Won Knowledge"], ["Rune-Reader", "Advantage on checks to identify magic items and read old scripts.", "Hard-Won Knowledge"], ["Poison Taster", "You recognize any common poison by sight or smell, and have advantage on CON checks against poison.", "Hard-Won Knowledge"], ["Field Surgeon", "Stabilizing an ally needs no check, and they roll on the Injury Table with advantage.", "Hard-Won Knowledge"], ["Mishap Memory", "Once per session, when a spellcasting mishap happens near you, have it rerolled on the Magical Mishap Table.", "Hard-Won Knowledge"], ["Undead Hunter", "Advantage on attacks against undead in the first round of a fight.", "Hard-Won Knowledge"], ["Siege Sense", "You spot the weak point of any wall, door, or structure; breaking through takes half the time.", "Hard-Won Knowledge"], ["Unbreakable", "Once per session, when you would drop to 0 HP, drop to 1 instead.", "Grit & Spirit"], ["Steady Nerves", "Advantage against fear effects.", "Grit & Spirit"], ["Stubborn Mind", "Advantage against charm and mind control.", "Grit & Spirit"], ["Last Stand", "While you are the only one in the party still standing, all your checks have advantage.", "Grit & Spirit"], ["Spite", "When an ally drops near you, your next attack deals +1d6 damage.", "Grit & Spirit"], ["Gallows Humor", "Once per session, a joke at the worst moment gives one ally a Grit token.", "Grit & Spirit"], ["Old Prayers", "Once per session, reroll a failed resilience check.", "Grit & Spirit"], ["Sentinel", "You can't be surprised while you keep watch.", "Grit & Spirit"], ["Mentor's Voice", "Retainers you lead have advantage on morale checks.", "Grit & Spirit"], ["One More Day", "Once per adventure, ignore exhaustion for one full day.", "Grit & Spirit"]];
+
+const RETAINER_TYPES=[
+ ["Laborer","Diligent and athletic: hauling, digging, rowing, carrying load."],
+ ["Expert","Educated or experienced: guides, scribes, smiths, lore."],
+ ["Militia","Capable in a fight: spears, shields, holding the line."],
+ ["Adept","An acolyte priest or conjurer: minor rites, wards, potions."]];
+const rollRetainer=()=>RETAINER_TYPES[d(4)-1][0];
+function syncRetainers(){const cap=derive().retainerCap;state.retainers=state.retainers||[];while(state.retainers.length<cap)state.retainers.push(rollRetainer());state.retainers.length=cap;}
+const LEGENDS=["Held the Ashgate alone for a night and a day","Slew the Wyrm of Grey Fen thirty winters ago","Stole the Duke's crown and gave it back, slightly lighter","Sealed the Hollow King beneath the Barrow Hills","Led the last caravan out of burning Kesh"];
+const FAITHFUL=["Grudge, the notched arming sword","Old Reliable, a dented round shield","Widowmaker, a black-fletched war bow","Lantern-Heart, a brass lamp that never gutters","Graywhisper, a wolf-pelt cloak","Ma's Comfort, a heavy iron skillet","The Debt, a demon-bone dagger","Hob's Luck, a silver coin on a cord"];
+const FAITHFUL_PROPS=["Never dulls or breaks. Once per session, a hit with it ignores an enemy's resistance or immunity.","Once per fight, absorb one hit completely; afterwards it hums for an hour and draws attention.","Once per adventure, an arrow loosed from it can't miss someone who wronged you.","Its light reveals invisible things within 30 ft and burns no SUP.","While worn you can't be tracked by scent, and once per session you can vanish into shadow.","Anything cooked in it heals 1d6 HP; it hits like a mace and rings like a bell.","Deals +1d6 against Evil creatures, but whispers your name to them when drawn.","Once per session, flip it to reroll any d20; on a 1 it lands on its edge and the GM names a cost."];
+function faithfulJSON(){return {name:state.faithful,properties:state.faithfulProps};}
+const FORTUNE=["Bought a farm, lost it to the tax collector","Gambled it in the river-barges of Ost","Paid for three daughters' weddings","Spent it on a tavern that burned down","Gave it to the temple that patched me up"];
+const NAMES=["Old Brann","Mother Ysolde","Tamsin Greyhand","Corvin the Late","Hob Ashwillow","Sister Marrow","Dagny Ironvow","Pell Tuckett"];
+
+const state={};
+const blank=()=>({player:"",name:"",race:"Human",boosts:["STR","CON"],traits:[],retainers:[],base:{STR:10,DEX:10,CON:10,INT:10,WIS:10,CHA:10},
+  inc:{4:"STR",6:"CON",8:"STR"},cls:"Warrior",arch:"Barbarian",hpMethod:"average",hpRolls:[],
+  archFeats:[],spells:{0:[],1:[],2:[],3:[],4:[],5:[]},cantripUpgrade:"",armor:"Heavy",shield:"no",sup:10,weapons:[],
+  legend:"",faithful:"",faithfulProps:"",fortune:"",rusty:[],wisdom:WISDOM[0][0],ail:["Bad Knee","Old Wound"]});
+
+const example=()=>Object.assign(blank(),{player:"Shiv",name:"Old Brann",race:"Human",boosts:["STR","CON"],traits:[],base:{STR:15,DEX:11,CON:14,INT:9,WIS:10,CHA:14},
+  inc:{4:"STR",6:"CON",8:"STR"},cls:"Warrior",arch:"Fighter",archFeats:["+1 permanent AC","Phalanx: allies gain +1 AC when near you"],
+  armor:"Heavy",shield:"yes",sup:9,weapons:["Arming sword","Longspear","War bow"],
+  legend:"Held the Ashgate alone for a night and a day",faithful:"Grudge, the notched arming sword",faithfulProps:"Never dulls or breaks. Once per session, a hit with it ignores an enemy's resistance or immunity.",fortune:"Bought a farm, lost it to the tax collector",
+  rusty:["Make three full attacks as one active action"],wisdom:"Dirty Fighting",ail:["Bad Knee","War Stories"]});
+
+Object.assign(state,example());
+
+// ---------- derived ----------
+// Final-state features at level 9: drop progression noise and anything a later level replaces
+const SUPERSEDED=new Set(["Make two full attacks as one active action"]);
+function finalFeatures(C){return Object.entries(C.levels).filter(([l,t])=>+l>=2&&!t.startsWith("+1 to")&&!t.startsWith("Pick")&&!SUPERSEDED.has(t));}
+function allAbilities(C){return finalFeatures(C).map(([l,t])=>t).concat(state.archFeats);}
+// Closest ability score for a rusty-ability check: keyword match, else the class's prime score
+const RUST_RULES=[
+ [/healing song/i,"CHA"],[/immune to charm/i,"WIS"],[/monster info/i,"INT"],[/max load/i,"STR"],
+ [/ranged|bow|stealth|backstab|lockpick|climb|traps|dodge|disguise|halve one hit|dex mod|light armor|move speed/i,"DEX"],
+ [/custom poison|lore|potion|magic item|cantrip|quickcast|dispel|mishap|familiar|mastery|spell|reduce next damage|sacrifice|value|investigat/i,"INT"],
+ [/heal|undead|evil|sense|bless|vow|lay on hands|wildskin|nature|track|hunt|wilderness|terrain|lost|\blies\b|knowledge|insight|darksight|detect|instinct|no trail/i,"WIS"],
+ [/charm|perform|\blie\b|deceive|intimidat|diplomacy|orders|morale|song|tongues|strategy|help allies|phalanx/i,"CHA"],
+ [/endurance|weather|immune|sleep|eat|hp|rage|fire damage|resist magic/i,"CON"],
+ [/attack|counter|crit|dmg|damage|martial|armor|\bac\b/i,"STR"]];
+function rustStat(t){for(const [re,st] of RUST_RULES)if(re.test(t))return st;return {Warrior:"STR",Thief:"DEX",Zealot:"WIS",Mage:"INT"}[state.cls];}
+function fillAutoSpells(){const C=CLASSES[state.cls];if(C.caster)[1,2,3].forEach(l=>state.spells[l]=SPELLS[C.caster][l].map(z=>z[0]));}
+function finalScores(){
+  const s={};AB.forEach(a=>s[a]=withRace(a));
+  [4,6,8].forEach(l=>{if(state.inc[l]) s[state.inc[l]]++;});
+  return s;
+}
+function hasFeat(t){return state.archFeats.some(f=>f.startsWith(t));}
+function derive(){
+  const C=CLASSES[state.cls], S=finalScores(), M={};AB.forEach(a=>M[a]=mod(S[a]));
+  const prof=4, conM=M.CON;
+  const avg=Math.ceil((C.die+1)/2);
+  const ups=[];
+  for(let i=0;i<8;i++){
+    const r=state.hpMethod==="roll"?(state.hpRolls[i]||(state.hpRolls[i]=d(C.die))):avg;
+    ups.push(Math.max(1,r+conM));
+  }
+  let hp=Math.max(1,C.startHp+conM)+ups.reduce((a,b)=>a+b,0);
+  if(hasFeat("+6 permanent HP"))hp+=6;
+  if(hasTrait("Dwarven Toughness"))hp+=9;
+  if(hasFeat("+4 permanent HP"))hp+=4;
+  if(hasFeat("Vow"))hp+=2;
+  let ac, acNote;
+  if(state.armor==="Heavy"){ac=15;acNote="Heavy armor 15"}
+  else if(state.armor==="Light"){ac=12+M.DEX;acNote="Light armor 12 + DEX"}
+  else {ac=10+M.DEX;acNote="No armor 10 + DEX";if(hasFeat("AC 12 + DEX")){ac=12+M.DEX;acNote="Sorcerer 12 + DEX"}}
+  if(state.shield==="yes"){ac+=2;acNote+=", shield +2"}
+  if(hasFeat("+1 permanent AC")){ac+=1;acNote+=", +1 class ability"}
+  const speed=30+(hasFeat("+10' move")?10:0);
+  const archChecks=(C.arch[state.arch]||{checks:[]}).checks;
+  const highest=Math.max(...AB.map(a=>M[a]));
+  let load=S.STR+(hasFeat("+4 max load")?4:0);
+  const tradition=C.caster;
+  const castMod=tradition==="Arcane"?M.INT+prof:tradition==="Divine"?M.WIS+prof:null;
+  const martial=C.weapons==="All"||hasFeat("Martial proficiency");
+  return {C,S,M,prof,hp,ups,ac,acNote,speed,archChecks,highest,load,tradition,castMod,martial,
+    retainerCap:Math.max(0,M.CHA-(state.ail.includes("Outlived Your Friends")?1:0)),hench:Math.max(0,M.CHA+9-5),renown:highest+9};
+}
+function validity(){
+  const msgs=[], R=RACES[state.race], S=finalScores();
+  const req=R.req[state.cls];
+  if(req && withRace(req[0])<req[1]) msgs.push(`${state.race} ${state.cls} needs ${req[1]}+ ${req[0]} (has ${withRace(req[0])} after racial boost).`);
+  if(state.archFeats.length!==2) msgs.push(`Pick ${2-state.archFeats.length>0?2-state.archFeats.length+" more":"exactly 2"} archetype class abilit${state.archFeats.length===1?"y":"ies"}.`);
+  const D=CLASSES[state.cls];
+  if(D.caster){
+    const cMax=3+(hasFeat("Pick +1 cantrip")?1:0);
+    if(state.spells[0].length!==cMax) msgs.push(`Pick ${cMax} cantrips (${state.spells[0].length} chosen).`);
+    [4,5].forEach(l=>{if(state.spells[l].length!==KNOWN9[l]) msgs.push(`Pick ${KNOWN9[l]} level-${l} spell${KNOWN9[l]>1?"s":""} (${state.spells[l].length} chosen).`);});
+    if(state.cls==="Mage"&&!state.cantripUpgrade) msgs.push("Level 9: pick one known spell (level 1–3) to become a cantrip.");
+  }
+  if(state.ail[0]===state.ail[1]) msgs.push("Pick two different ailments.");
+  if(!state.faithful) msgs.push("Name your signature magic item.");
+  if(RACES[state.race].choose&&state.boosts[0]===state.boosts[1]) msgs.push("Human +2 boosts must go to two different abilities.");
+  if(TRAITS[state.race]&&(state.traits||[]).length!==2) msgs.push(`Pick 2 ${state.race} traits (${(state.traits||[]).length} chosen).`);
+  return msgs;
+}
+
+// ---------- json ----------
+function buildJSON(){
+  fillAutoSpells();syncRetainers();state.rusty=allAbilities(CLASSES[state.cls]);
+  const x=derive(), C=x.C, A=C.arch[state.arch];
+  const ail=state.ail.map((n,i)=>{const a=AILMENTS.find(z=>z[0]===n)||AILMENTS[0];return {d100:AILMENTS.indexOf(a)+1,id:a[0].toLowerCase().replace(/[^a-z]+/g,"-").replace(/^-|-$/g,""),category:a[3],name:a[0],base:a[0],trigger:a[1],effect:a[2]};});
+  const w=WISDOM.find(z=>z[0]===state.wisdom)||WISDOM[0];
+  const spellObj=x.tradition?{
+    tradition:x.tradition,castingAbility:x.tradition==="Arcane"?"INT":"WIS",checkModifier:x.castMod,
+    checkDC:"10 + spell level",
+    cantrips:state.spells[0].map(n=>({name:n,text:(SPELLS[x.tradition][0].find(z=>z[0]===n)||[])[1]})),
+    bonusCantrip:state.cls==="Mage"&&state.cantripUpgrade?state.cantripUpgrade:null,
+    known:Object.fromEntries([1,2,3,4,5].map(l=>[l,state.spells[l].map(n=>({name:n,text:(SPELLS[x.tradition][l].find(z=>z[0]===n)||[])[1]}))]))
+  }:null;
+  return {
+    schema:"ftd-veteran/1",
+    system:"Five Torches Deep",
+    homebrew:"Veterans & Ailments",
+    generatedAt:new Date().toISOString(),
+    player:state.player,name:state.name,race:state.race,class:state.cls,archetype:state.arch,
+    level:9,xp:100000,proficiencyBonus:x.prof,
+    abilityMethod:{roll:RACES[state.race].dice+"d6 drop "+RACES[state.race].drop,racialBoosts:Object.fromEntries(AB.filter(a=>racial(a)).map(a=>[a,racial(a)])),humanBoosts:RACES[state.race].choose?state.boosts:null},
+    racialTraits:RACES[state.race].choose?[]:(state.traits||[]).map(t=>({name:t,text:(TRAITS[state.race].find(z=>z[0]===t)||[])[1]})),
+    abilities:Object.fromEntries(AB.map(a=>[a,{base:state.base[a],racial:racial(a),score:x.S[a],mod:x.M[a]}])),
+    abilityIncreases:[4,6,8].map(l=>({level:l,ability:state.inc[l]})),
+    hp:{max:x.hp,method:state.hpMethod,start:Math.max(1,C.startHp+x.M.CON),levelUps:x.ups,hitDie:"d"+C.die},
+    ac:{value:x.ac,armor:state.armor,shield:state.shield==="yes",breakdown:x.acNote},
+    speed:x.speed,initiative:x.S.DEX,
+    attacks:{melee:x.M.STR+x.prof,ranged:x.M.DEX+x.prof,
+      weapons:state.weapons.map(n=>{const wp=WEAPONS.find(z=>z[0]===n);const prof=weaponProf(wp,x.martial);return {name:n,damage:wp[1],type:wp[2],notes:wp[3],proficient:prof};})},
+    limits:{maxLoad:x.load,supplyMax:x.S.INT,supplyCarried:Math.min(state.sup,x.S.INT),resilience:x.S.CON,maxRetainers:x.retainerCap,renown:x.renown},
+    proficiencies:{abilities:C.abilityProf,checks:C.checks,archetypeChecks:A.checks,
+      weapons:x.martial?"All":"Simple",armor:C.armor.filter(a=>a!=="None").concat(hasFeat("Wear light armor")?["Light"]:[])},
+    classAbilities:[...finalFeatures(C).map(([l,t])=>({text:t,source:"class",gainedAt:+l})),...state.archFeats.map(f=>({text:f,source:"archetype"}))].map(a=>{
+      const r=state.rusty.includes(a.text),st=rustStat(a.text);
+      return r?{...a,rusty:true,rustyCheck:{ability:st,modifier:x.M[st],dc:12,onFail:"does not work or only partly works (GM's call)",clearsOnSuccess:true}}:{...a,rusty:false};}),
+    spellcasting:spellObj,
+    equipment:{kit:C.kit,armor:state.armor,shield:state.shield==="yes",weapons:state.weapons},
+    retainers:state.retainers.map((t,i)=>({slot:i+1,category:t,hd:3,hench:true,wages:0,name:null})),
+    veteran:{legend:state.legend,oldFaithful:faithfulJSON(),spentFortune:state.fortune,
+      wisdomOfAge:{name:w[0],category:w[2],text:w[1]},ailments:ail,grit:{max:2,current:0,carriesOver:false}},
+    validation:validity()
+  };
+}
+
+// ---------- render ----------
+function opt(sel,items,val){sel.innerHTML=items.map(v=>{const [k,l]=Array.isArray(v)?v:[v,v];return `<option value="${esc(k)}"${k===val?" selected":""}>${esc(l)}</option>`}).join("");}
+function esc(s){return String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
+
+function renderForm(){
+  fillAutoSpells();syncRetainers();
+  $("fPlayer").value=state.player;$("fName").value=state.name;
+  opt($("fRace"),Object.keys(RACES),state.race);
+  $("raceNote").textContent=RACES[state.race].note;
+  const S=finalScores();
+  $("abilBox").innerHTML=AB.map(a=>`<div class="ab"><b>${a}</b><input id="ab_${a}" type="number" min="1" max="20" value="${state.base[a]}" aria-label="${a} rolled score"><span class="mod">${fmt(mod(S[a]))}</span><span class="fin">${racial(a)?`<b class="rb">+${racial(a)} race</b> · `:""}final ${S[a]}</span></div>`).join("");
+  AB.forEach(a=>{$("ab_"+a).addEventListener("change",e=>{state.base[a]=Math.max(1,Math.min(20,+e.target.value||1));update();});});
+  $("boostRow").hidden=!RACES[state.race].choose;if(state.boosts[1]===state.boosts[0])state.boosts[1]=AB.find(a=>a!==state.boosts[0]);opt($("fBoost"),AB,state.boosts[0]);opt($("fBoost2"),AB.filter(a=>a!==state.boosts[0]),state.boosts[1]);
+  const TL=TRAITS[state.race];$("traitWrap").hidden=!TL;
+  if(TL){state.traits=(state.traits||[]).filter(t=>TL.some(z=>z[0]===t));
+    $("traitHead").textContent=`${state.race} traits: pick 2 (${state.traits.length}/2)`;
+    $("traitPicks").innerHTML=TL.map((t,i)=>{const on=state.traits.includes(t[0]),dis=!on&&state.traits.length>=2;return `<label class="pick${on?" on":""}${dis?" dis":""}" for="rt_${i}"><input type="checkbox" id="rt_${i}" ${on?"checked":""} ${dis?"disabled":""}><span>${esc(t[0])}<em>${esc(t[1])}</em></span></label>`}).join("");
+    TL.forEach((t,i)=>$("rt_"+i).addEventListener("change",e=>{state.traits=e.target.checked?[...state.traits,t[0]].slice(0,2):state.traits.filter(z=>z!==t[0]);update();}));}
+  opt($("fSwapA"),AB,$("fSwapA").value||"STR");opt($("fSwapB"),AB,$("fSwapB").value||"DEX");
+  [4,6,8].forEach(l=>opt($("fInc"+l),AB,state.inc[l]));
+  opt($("fClass"),Object.keys(CLASSES),state.cls);
+  const C=CLASSES[state.cls];
+  opt($("fArch"),Object.keys(C.arch),state.arch);
+  $("fHpMethod").value=state.hpMethod;
+  const feats=C.arch[state.arch].feats;
+  $("archPicks").innerHTML=feats.map((f,i)=>{const on=state.archFeats.includes(f),dis=!on&&state.archFeats.length>=2;return `<label class="pick${on?" on":""}${dis?" dis":""}" for="af_${i}"><input type="checkbox" id="af_${i}" ${on?"checked":""} ${dis?"disabled":""}><span>${esc(f)}</span></label>`}).join("");
+  feats.forEach((f,i)=>$("af_"+i).addEventListener("change",e=>{if(e.target.checked){if(state.archFeats.length<2)state.archFeats.push(f)}else state.archFeats=state.archFeats.filter(z=>z!==f);
+    if(!hasFeat("Pick +1 cantrip")&&state.spells[0].length>3)state.spells[0]=state.spells[0].slice(0,3);update();}));
+  renderSpells();
+  opt($("fArmor"),C.armor.concat(hasFeat("Wear light armor")&&!C.armor.includes("Light")?["Light"]:[]),state.armor);
+  $("fShield").value=state.shield;$("fSup").value=state.sup;$("fSup").max=finalScores().INT;
+  const x=derive();
+  const avail=WEAPONS.filter(w=>!state.weapons.includes(w[0]));
+  const grp=t=>avail.filter(w=>w[2]===t).map(w=>`<option value="${esc(w[0])}">${esc(w[0])} · ${esc(w[1])}${weaponProf(w,x.martial)?"":" (not proficient)"}</option>`).join("");
+  $("fWeaponAdd").innerHTML=`<option value="">Choose a weapon…</option><optgroup label="Simple">${grp("simple")}</optgroup><optgroup label="Martial">${grp("martial")}</optgroup>`;
+  $("weaponChips").innerHTML=state.weapons.length?state.weapons.map((n,i)=>{const w=WEAPONS.find(z=>z[0]===n);const prof=weaponProf(w,x.martial);
+    return `<span class="chip"><span><b>${esc(n)}</b> ${esc(w[1])} · ${esc(w[3])}${prof?"":" · not proficient"}</span><button type="button" data-wi="${i}" aria-label="Remove ${esc(n)}">Remove</button></span>`}).join(""):`<p class="note">No weapons yet.</p>`;
+  $("weaponChips").querySelectorAll("button[data-wi]").forEach(b=>b.addEventListener("click",()=>{state.weapons.splice(+b.dataset.wi,1);update();}));
+  const rc=state.retainers.length;
+  $("retNote").textContent=rc?`Your CHA modifier draws ${rc} loyal hench (3 HD, no wages). Each one's type is rolled on a d4; reroll until you like the mix. Names can wait.`:"Your CHA modifier draws no followers.";
+  $("btnRetAll").hidden=!rc;
+  $("retList").innerHTML=state.retainers.map((t,i)=>{const r=RETAINER_TYPES.find(z=>z[0]===t);return `<div class="chip" style="justify-content:space-between"><span><b>Hench ${i+1}: ${esc(t)}</b> · ${esc(r[1])}</span><button type="button" data-ri="${i}">Reroll</button></div>`}).join("");
+  $("retList").querySelectorAll("button[data-ri]").forEach(b=>b.addEventListener("click",()=>{state.retainers[+b.dataset.ri]=rollRetainer();update();}));
+  renderFaithfulGear();
+  $("fLegend").value=state.legend;$("fFaithful").value=state.faithful;$("fFaithfulProps").value=state.faithfulProps;$("fFortune").value=state.fortune;
+  const abil=allAbilities(C);
+  state.rusty=abil.slice();
+  $("rustList").innerHTML=abil.map((t,i)=>{const on=state.rusty.includes(t),st=rustStat(t),m=mod(finalScores()[st]);
+    return `<label class="pick dis" for="ru_${i}"><input type="checkbox" id="ru_${i}" checked disabled><span>${esc(t)}<em>Rusty · DC 12 ${st} check (${fmt(m)})</em></span></label>`}).join("");
+  {const g={};WISDOM.forEach(w=>(g[w[2]]=g[w[2]]||[]).push(w));$("fWisdom").innerHTML=Object.entries(g).map(([k,v])=>`<optgroup label="${esc(k)}">`+v.map(w=>`<option value="${esc(w[0])}"${w[0]===state.wisdom?" selected":""}>${esc(w[0])}</option>`).join("")+`</optgroup>`).join("");}$("wisdomText").textContent=(WISDOM.find(w=>w[0]===state.wisdom)||WISDOM[0])[1];
+  ailSelect($("fAil1"),state.ail[0]);ailSelect($("fAil2"),state.ail[1]);
+  $("ailDetail").innerHTML=state.ail.map(n=>{const i=AILMENTS.findIndex(z=>z[0]===n),a=AILMENTS[i];return `<div class="ail"><b>${i+1}. ${esc(a[0])} <span class="tag">${esc(a[3])}</span></b>${esc(a[1])}. ${esc(a[2])}</div>`}).join("");
+  const v=validity().filter(m=>m.includes("needs"));
+  $("classWarn").textContent=v.join(" ");
+}
+
+function ailSelect(sel,val){
+  const q=(($("fAilFilter")||{}).value||"").toLowerCase().trim();
+  const groups={};AILMENTS.forEach((a,i)=>{const hit=!q||a.join(" ").toLowerCase().includes(q)||a[0]===val;if(hit)(groups[a[3]]=groups[a[3]]||[]).push([a[0],`${i+1}. ${a[0]}`]);});
+  sel.innerHTML=Object.entries(groups).map(([g,items])=>`<optgroup label="${esc(g)}">`+items.map(([k,l])=>`<option value="${esc(k)}"${k===val?" selected":""}>${esc(l)}</option>`).join("")+`</optgroup>`).join("");
+}
+function renderFaithfulGear(){$("faithfulGear").innerHTML=`<span class="fb-label">Signature magic item · edit under Veteran traits</span><b>${esc(state.faithful||"Not named yet")}</b>${state.faithfulProps?`<span>${esc(state.faithfulProps)}</span>`:`<span class="fb-empty">No properties yet.</span>`}`;}
+function renderSpells(){
+  const C=CLASSES[state.cls];
+  if(!C.caster){$("spellCard").hidden=true;return}
+  $("spellCard").hidden=false;
+  const T=SPELLS[C.caster], cMax=3+(hasFeat("Pick +1 cantrip")?1:0);
+  $("spellNote").textContent=`Casting check: 1d20 + ${C.caster==="Arcane"?"INT":"WIS"} mod + 4 vs DC 10 + spell level.`;
+  const lim={0:cMax,...KNOWN9};
+  let html="";
+  [0,4,5].forEach(l=>{
+    const sel=state.spells[l];
+    html+=`<div><h3>${l?"Level "+l:"Cantrips"} · ${sel.length}/${lim[l]}</h3><div class="picks" style="margin-top:6px">`+
+      T[l].map((s,i)=>{const on=sel.includes(s[0]);const dis=!on&&sel.length>=lim[l];return `<label class="pick${on?" on":""}${dis?" dis":""}" for="sp_${l}_${i}"><input type="checkbox" id="sp_${l}_${i}" ${on?"checked":""} ${dis?"disabled":""}><span>${esc(s[0])}<em>${esc(s[1])}</em></span></label>`}).join("")+`</div></div>`;
+  });
+  if(state.cls==="Mage"){
+    const pool=[1,2,3].flatMap(l=>state.spells[l]);
+    if(!pool.includes(state.cantripUpgrade))state.cantripUpgrade="";
+    html+=`<label for="fCantripUp">Level 9: a level 1–3 spell that becomes a cantrip<select id="fCantripUp"><option value="">Choose…</option>${pool.map(p=>`<option${p===state.cantripUpgrade?" selected":""}>${esc(p)}</option>`).join("")}</select></label>`;
+  }
+  $("spellBox").innerHTML=html;
+  [0,4,5].forEach(l=>T[l].forEach((s,i)=>$(`sp_${l}_${i}`).addEventListener("change",e=>{
+    state.spells[l]=e.target.checked?[...state.spells[l],s[0]]:state.spells[l].filter(z=>z!==s[0]);update();})));
+  const cu=$("fCantripUp");if(cu)cu.addEventListener("change",e=>{state.cantripUpgrade=e.target.value;update();});
+}
+
+function renderSheet(){
+  const j=buildJSON(), x=derive();
+  const v=j.validation;
+  const s=$("sheet");
+  s.innerHTML=`
+   <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:baseline">
+     <h2 style="font-size:1.7rem">${esc(j.name||"Unnamed veteran")}</h2><span class="tag">Level 9 · ${esc(j.race)} ${esc(j.class)} · ${esc(j.archetype)}</span>
+   </div>
+   <p class="note" style="margin-top:-8px">Player ${esc(j.player||"—")}${j.veteran.legend?` · “${esc(j.veteran.legend)}”`:""}</p>
+   ${v.length?`<p class="warn">${v.map(esc).join("<br>")}</p>`:`<p class="status">Sheet complete. Ready to export.</p>`}
+   <div class="kv">${AB.map(a=>`<div><span>${a}</span><strong>${j.abilities[a].score} (${fmt(j.abilities[a].mod)})</strong></div>`).join("")}</div>
+   <div class="kv">
+     <div><span>HP</span><strong>${j.hp.max}</strong></div><div><span>AC</span><strong>${j.ac.value}</strong></div>
+     <div><span>Prof</span><strong>+4</strong></div><div><span>Initiative</span><strong>${j.initiative}</strong></div>
+     <div><span>Speed</span><strong>${j.speed}'</strong></div><div><span>Melee</span><strong>${fmt(j.attacks.melee)}</strong></div>
+     <div><span>Ranged</span><strong>${fmt(j.attacks.ranged)}</strong></div>${j.spellcasting?`<div><span>Cast</span><strong>${fmt(j.spellcasting.checkModifier)}</strong></div>`:""}
+     <div><span>Max load</span><strong>${j.limits.maxLoad}</strong></div><div><span>Supply</span><strong>${j.limits.supplyCarried}/${j.limits.supplyMax}</strong></div>
+     <div><span>Resilience</span><strong>${j.limits.resilience}h</strong></div><div><span>Retainers</span><strong>${j.retainers.length}/${j.limits.maxRetainers}</strong></div>
+
+     <div><span>Renown</span><strong>${j.limits.renown}</strong></div><div><span>Grit max</span><strong>2</strong></div>
+   </div>
+   <p class="note">AC: ${esc(j.ac.breakdown)}. HP: ${j.hp.start} at level 1 + ${j.hp.levelUps.join(" + ")} (${esc(j.hp.method)}).</p>
+   ${j.racialTraits.length?`<h3>${esc(j.race)} traits</h3><p class="note" style="color:var(--ink)">${j.racialTraits.map(t=>`<b>${esc(t.name)}:</b> ${esc(t.text)}`).join("<br>")}</p>`:""}
+   <h3>Proficient checks</h3><p class="note" style="color:var(--ink)">${[...j.proficiencies.checks,...j.proficiencies.archetypeChecks].map(esc).join(", ")}${state.cls==="Thief"?" (archetype checks at double proficiency)":""}</p>
+   <h3>Class Abilities</h3><ul>${j.classAbilities.map(f=>`<li>${esc(f.text)}${f.rusty?` <span class="tag">rusty · DC 12 ${f.rustyCheck.ability}</span>`:""}</li>`).join("")}</ul>
+   ${j.spellcasting?`<h3>Spells (${esc(j.spellcasting.tradition)})</h3><p class="note" style="color:var(--ink)"><b>Cantrips:</b> ${j.spellcasting.cantrips.map(c=>esc(c.name)).join(", ")||"—"}${j.spellcasting.bonusCantrip?`, ${esc(j.spellcasting.bonusCantrip)} (L9)`:""}<br>${[4,5].map(l=>`<b>L${l}:</b> ${j.spellcasting.known[l].map(c=>esc(c.name)).join(", ")||"—"}`).join("<br>")}</p>`:""}
+   ${j.retainers.length?`<h3>Hench</h3><p class="note" style="color:var(--ink)">${j.retainers.map(r=>esc(r.category)).join(", ")} (3 HD each)</p>`:""}
+   <h3>Weapons</h3><p class="note" style="color:var(--ink)">${j.attacks.weapons.map(w=>`${esc(w.name)} ${esc(w.damage)}${w.proficient?"":" (no prof)"}`).join(" · ")||"—"}</p>
+   <h3>Veteran</h3>
+   <p class="note" style="color:var(--ink)"><b>Signature item:</b> ${esc(j.veteran.oldFaithful.name||"—")}${j.veteran.oldFaithful.properties?` · ${esc(j.veteran.oldFaithful.properties)}`:""}<br><b>Where the gold went:</b> ${esc(j.veteran.spentFortune||"—")}<br><b>Wisdom of Age — ${esc(j.veteran.wisdomOfAge.name)}:</b> ${esc(j.veteran.wisdomOfAge.text)}</p>
+   ${j.veteran.ailments.map(a=>`<div class="ail"><b>${esc(a.name)}</b>${esc(a.trigger)}. ${esc(a.effect)}</div>`).join("")}
+  `;
+  $("json").textContent=JSON.stringify(j,null,2);
+}
+
+function update(){renderForm();renderSheet();}
+
+// ---------- events ----------
+function bindStatic(){
+  const T=(id,key)=>$(id).addEventListener("input",e=>{state[key]=e.target.value;renderSheet();});
+  T("fPlayer","player");T("fName","name");T("fLegend","legend");T("fFaithful","faithful");T("fFaithfulProps","faithfulProps");
+  ["fFaithful","fFaithfulProps"].forEach(id=>$(id).addEventListener("input",renderFaithfulGear));T("fFortune","fortune");
+  $("fRace").addEventListener("change",e=>{state.race=e.target.value;update();});
+  $("fBoost").addEventListener("change",e=>{state.boosts[0]=e.target.value;update();});
+  $("fBoost2").addEventListener("change",e=>{state.boosts[1]=e.target.value;update();});
+  [4,6,8].forEach(l=>$("fInc"+l).addEventListener("change",e=>{state.inc[l]=e.target.value;update();}));
+  $("fClass").addEventListener("change",e=>{state.cls=e.target.value;const C=CLASSES[state.cls];state.arch=Object.keys(C.arch)[0];state.archFeats=[];
+    state.spells={0:[],1:[],2:[],3:[],4:[],5:[]};state.cantripUpgrade="";state.hpRolls=[];
+    if(!C.armor.includes(state.armor))state.armor=C.armor[0];update();});
+  $("fArch").addEventListener("change",e=>{state.arch=e.target.value;state.archFeats=[];update();});
+  $("fHpMethod").addEventListener("change",e=>{state.hpMethod=e.target.value;state.hpRolls=[];update();});
+  $("fWeaponAdd").addEventListener("change",e=>{const v=e.target.value;if(v&&!state.weapons.includes(v)){state.weapons.push(v);update();}});
+  $("fArmor").addEventListener("change",e=>{state.armor=e.target.value;update();});
+  $("fShield").addEventListener("change",e=>{state.shield=e.target.value;update();});
+  $("fSup").addEventListener("change",e=>{state.sup=Math.max(0,Math.min(finalScores().INT,+e.target.value||0));update();});
+  $("fWisdom").addEventListener("change",e=>{state.wisdom=e.target.value;update();});
+  $("fAil1").addEventListener("change",e=>{state.ail[0]=e.target.value;update();});
+  $("fAil2").addEventListener("change",e=>{state.ail[1]=e.target.value;update();});
+  $("btnRoll").addEventListener("click",()=>{rollAbilities();update();flash("Abilities rolled.");});
+  $("btnSwap").addEventListener("click",()=>{const a=$("fSwapA").value,b=$("fSwapB").value;if(a===b)return;[state.base[a],state.base[b]]=[state.base[b],state.base[a]];update();});
+  $("btnRetAll").addEventListener("click",()=>{state.retainers=state.retainers.map(rollRetainer);update();});
+  $("btnAil").addEventListener("click",()=>{rollAilments();update();});
+  $("fAilFilter").addEventListener("input",()=>{ailSelect($("fAil1"),state.ail[0]);ailSelect($("fAil2"),state.ail[1]);});
+  $("btnRandom").addEventListener("click",()=>{randomVeteran();update();hideExample();flash("A new veteran limps out of retirement.");});
+  $("btnReset").addEventListener("click",()=>{Object.assign(state,blank());update();hideExample();flash("Blank sheet.");});
+  $("btnCopy").addEventListener("click",copyJSON);
+  $("importFile").addEventListener("change",importJSON);
+}
+function hideExample(){$("exampleNote").hidden=true;}
+function rollStat(n,drop){const r=Array.from({length:n},()=>d(6)).sort((a,b)=>b-a);return r.slice(0,n-drop).reduce((a,b)=>a+b,0);}
+function rollSix(){const R=RACES[state.race];return AB.map(()=>rollStat(R.dice,R.drop));}
+function rollAbilities(){const r=rollSix();AB.forEach((a,i)=>state.base[a]=r[i]);}
+function rollAilments(){let a=d(100)-1,b=d(100)-1;while(b===a)b=d(100)-1;state.ail=[AILMENTS[a][0],AILMENTS[b][0]];}
+const pick=a=>a[Math.floor(Math.random()*a.length)];
+function randomVeteran(){
+  Object.assign(state,blank());
+  state.race=pick(Object.keys(RACES));
+  // reroll until race allows at least the chosen class
+  state.cls=pick(Object.keys(CLASSES));
+  {const prime0={Warrior:"STR",Thief:"DEX",Zealot:"WIS",Mage:"INT"}[state.cls];
+   const order=[prime0,"CON",...AB.filter(a=>a!==prime0&&a!=="CON")];
+   const r=rollSix().sort((a,b)=>b-a);order.forEach((a,i)=>state.base[a]=r[i]);
+   state.boosts=[prime0,"CON"];if(TRAITS[state.race])state.traits=[...TRAITS[state.race]].sort(()=>Math.random()-.5).slice(0,2).map(t=>t[0]);
+   const rq=RACES[state.race].req[state.cls];if(rq&&withRace(rq[0])<rq[1])state.base[rq[0]]=rq[1]-racial(rq[0]);}
+  const C=CLASSES[state.cls];
+  state.arch=pick(Object.keys(C.arch));
+  const f=[...C.arch[state.arch].feats].sort(()=>Math.random()-.5);state.archFeats=f.slice(0,2);
+  const prime={Warrior:"STR",Thief:"DEX",Zealot:"WIS",Mage:"INT"}[state.cls];
+  state.inc={4:prime,6:"CON",8:prime};
+  state.armor=C.armor[0];state.shield=state.cls==="Thief"?"no":"yes";
+  if(state.cls==="Mage"){state.shield="yes";}
+  const ok=WEAPONS.filter(w=>w[2]==="simple"||C.weapons==="All");state.weapons=[...ok].sort(()=>Math.random()-.5).slice(0,2).map(w=>w[0]);
+  if(C.caster){const T=SPELLS[C.caster];const cMax=3+(state.archFeats.includes("Pick +1 cantrip")?1:0);
+    state.spells[0]=[...T[0]].sort(()=>Math.random()-.5).slice(0,cMax).map(s=>s[0]);
+    [1,2,3,4,5].forEach(l=>state.spells[l]=[...T[l]].sort(()=>Math.random()-.5).slice(0,KNOWN9[l]).map(s=>s[0]));
+    if(state.cls==="Mage")state.cantripUpgrade=pick([1,2,3].flatMap(l=>state.spells[l]));}
+  state.name=pick(NAMES);state.legend=pick(LEGENDS);{const fi=Math.floor(Math.random()*FAITHFUL.length);state.faithful=FAITHFUL[fi];state.faithfulProps=FAITHFUL_PROPS[fi];}state.fortune=pick(FORTUNE);
+  state.wisdom=pick(WISDOM)[0];rollAilments();
+  state.sup=Math.min(10,finalScores().INT);
+}
+
+function flash(m){$("status").textContent=m;clearTimeout(flash.t);flash.t=setTimeout(()=>$("status").textContent="",4000);}
+function fileName(){return ((state.name||"veteran").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"")||"veteran")+".ftd.json";}
+function copyJSON(){
+  const txt=$("json").textContent;
+  if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(txt).then(()=>flash("JSON copied."),()=>selectJSON());}
+  else selectJSON();
+}
+function selectJSON(){const r=document.createRange();r.selectNodeContents($("json"));const s=getSelection();s.removeAllRanges();s.addRange(r);flash("Copying isn't allowed here. The JSON is selected; press Ctrl/Cmd+C.");}
+function importJSON(e){
+  const f=e.target.files&&e.target.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=()=>{try{
+    const j=JSON.parse(r.result);if(j.schema!=="ftd-veteran/1")throw new Error("schema");
+    Object.assign(state,blank(),{player:j.player||"",name:j.name||"",race:j.race,cls:j.class,arch:j.archetype,
+      boosts:(j.abilityMethod&&(j.abilityMethod.humanBoosts||(j.abilityMethod.humanBoost?[j.abilityMethod.humanBoost,"CON"]:null)))||["STR","CON"],traits:(j.racialTraits||[]).map(t=>t.name),base:Object.fromEntries(AB.map(a=>[a,j.abilities[a].base])),inc:Object.fromEntries(j.abilityIncreases.map(i=>[i.level,i.ability])),
+      hpMethod:j.hp.method==="roll"?"roll":"average",hpRolls:j.hp.method==="roll"?j.hp.levelUps.map(v=>v-mod(j.abilities.CON.score)):[],
+      archFeats:(j.classAbilities?j.classAbilities.filter(f=>f.source==="archetype"):(j.archetypeFeatures||[])).map(f=>f.text),armor:j.ac.armor,shield:j.ac.shield?"yes":"no",sup:j.limits.supplyCarried,
+      retainers:(j.retainers||[]).map(r=>r.category),weapons:j.equipment.weapons||[],legend:j.veteran.legend||"",faithful:(typeof j.veteran.oldFaithful==="object"?j.veteran.oldFaithful.name:j.veteran.oldFaithful)||"",faithfulProps:(j.veteran.oldFaithful&&j.veteran.oldFaithful.properties)||"",fortune:j.veteran.spentFortune||"",
+      rusty:(j.classAbilities||[]).filter(a=>a.rusty).map(a=>a.text).concat([j.veteran.rustyClassAbility||j.veteran.rustyFeature].filter(Boolean)),wisdom:j.veteran.wisdomOfAge.name,ail:j.veteran.ailments.map(a=>a.base)});
+    if(j.spellcasting){state.spells[0]=j.spellcasting.cantrips.map(c=>c.name);[1,2,3,4,5].forEach(l=>state.spells[l]=(j.spellcasting.known[l]||[]).map(c=>c.name));state.cantripUpgrade=j.spellcasting.bonusCantrip||"";}
+    hideExample();update();flash("Imported "+(j.name||"character")+".");
+  }catch(err){flash("That file isn't a Veteran Forge character (schema ftd-veteran/1).");}
+  e.target.value="";};
+  r.readAsText(f);
+}
+
+bindStatic();update();
+})();
+</script>
+
+</body>
+</html>
