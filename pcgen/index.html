@@ -129,8 +129,7 @@ table.ailt td{border-top:1px solid var(--line);padding:4px 6px;vertical-align:to
           <button id="btnRoll" type="button">Roll six stats</button>
         </div>
         <div class="row" id="boostRow">
-          <label for="fBoost">Human +2 boost one<select id="fBoost"></select></label>
-          <label for="fBoost2">Human +2 boost two<select id="fBoost2"></select></label>
+          <label for="fBoost">Human +2 boost (house rule)<select id="fBoost"></select></label>
         </div>
         <div class="row" id="swapRow">
           <label for="fSwapA">Swap rolls: ability A<select id="fSwapA"></select></label>
@@ -156,7 +155,7 @@ table.ailt td{border-top:1px solid var(--line);padding:4px 6px;vertical-align:to
           </select></label>
         </div>
         <p class="warn" id="classWarn"></p>
-        <h3>Archetype Class Abilities: pick 2</h3>
+        <h3 id="archHead">Archetype Class Abilities: pick 2</h3>
         <div class="picks" id="archPicks"></div>
       </section>
 
@@ -240,12 +239,13 @@ const rollN=(n,s)=>Array.from({length:n},()=>d(s)).reduce((a,b)=>a+b,0);
 const $=id=>document.getElementById(id);
 
 const RACES={ // homebrew: rolled stats + racial boosts
-  Human:{bonus:{},choose:true,dice:4,drop:1,req:{},note:"Roll 4d6, drop the lowest, six times. Assign or swap rolls freely. +2 to two different abilities of your choice. Any class. No racial traits."},
+  Human:{bonus:{},choose:true,dice:4,drop:1,req:{},note:"Roll 4d6, drop the lowest, six times. Assign or swap rolls freely. +2 to one ability of your choice. Any class. House rule: no racial traits; instead humans pick 3 archetype class abilities instead of 2."},
   Dwarf:{bonus:{CON:2,STR:2},dice:4,drop:1,req:{Thief:["DEX",13],Mage:["INT",13]},note:"Roll 4d6, drop the lowest, six times. Assign or swap rolls freely. +2 CON and +2 STR. Thief needs 13+ DEX, Mage 13+ INT."},
   Elf:{bonus:{DEX:2,INT:2},dice:4,drop:1,req:{Warrior:["STR",13],Zealot:["WIS",13]},note:"Roll 4d6, drop the lowest, six times. Assign or swap rolls freely. +2 DEX and +2 INT. Warrior needs 13+ STR, Zealot 13+ WIS."},
   Halfling:{bonus:{WIS:2,CHA:2},dice:4,drop:1,req:{Warrior:["STR",13],Mage:["INT",13]},note:"Roll 4d6, drop the lowest, six times. Assign or swap rolls freely. +2 WIS and +2 CHA. Warrior needs 13+ STR, Mage 13+ INT."}
 };
-function racial(a){const R=RACES[state.race];return (R.bonus[a]||0)+(R.choose&&state.boosts.includes(a)?2:0);}
+function archLimit(){return state.race==="Human"?3:2;}
+function racial(a){const R=RACES[state.race];return (R.bonus[a]||0)+(R.choose&&state.boosts[0]===a?2:0);}
 const TRAITS={ // homebrew racial traits, adapted from classic D&D race features
   Dwarf:[
     ["Darksight","See in darkness out to 60 ft as if it were dim light."],
@@ -359,13 +359,13 @@ const FORTUNE=["Bought a farm, lost it to the tax collector","Gambled it in the 
 const NAMES=["Old Brann","Mother Ysolde","Tamsin Greyhand","Corvin the Late","Hob Ashwillow","Sister Marrow","Dagny Ironvow","Pell Tuckett"];
 
 const state={};
-const blank=()=>({player:"",name:"",race:"Human",boosts:["STR","CON"],traits:[],retainers:[],base:{STR:10,DEX:10,CON:10,INT:10,WIS:10,CHA:10},
+const blank=()=>({player:"",name:"",race:"Human",boosts:["STR"],traits:[],retainers:[],base:{STR:10,DEX:10,CON:10,INT:10,WIS:10,CHA:10},
   inc:{4:"STR",6:"CON",8:"STR"},cls:"Warrior",arch:"Barbarian",hpMethod:"average",hpRolls:[],
   archFeats:[],spells:{0:[],1:[],2:[],3:[],4:[],5:[]},cantripUpgrade:"",armor:"Heavy",shield:"no",sup:10,weapons:[],
   legend:"",faithful:"",faithfulProps:"",fortune:"",rusty:[],wisdom:WISDOM[0][0],ail:["Bad Knee","Old Wound"]});
 
-const example=()=>Object.assign(blank(),{player:"Shiv",name:"Old Brann",race:"Human",boosts:["STR","CON"],traits:[],base:{STR:15,DEX:11,CON:14,INT:9,WIS:10,CHA:14},
-  inc:{4:"STR",6:"CON",8:"STR"},cls:"Warrior",arch:"Fighter",archFeats:["+1 permanent AC","Phalanx: allies gain +1 AC when near you"],
+const example=()=>Object.assign(blank(),{player:"Shiv",name:"Old Brann",race:"Human",boosts:["STR"],traits:[],base:{STR:15,DEX:11,CON:14,INT:9,WIS:10,CHA:14},
+  inc:{4:"STR",6:"CON",8:"STR"},cls:"Warrior",arch:"Fighter",archFeats:["+1 permanent AC","Phalanx: allies gain +1 AC when near you","+1 dmg all attacks"],
   armor:"Heavy",shield:"yes",sup:9,weapons:["Arming sword","Longspear","War bow"],
   legend:"Held the Ashgate alone for a night and a day",faithful:"Grudge, the notched arming sword",faithfulProps:"Never dulls or breaks. Once per session, a hit with it ignores an enemy's resistance or immunity.",fortune:"Bought a farm, lost it to the tax collector",
   rusty:["Make three full attacks as one active action"],wisdom:"Dirty Fighting",ail:["Bad Knee","War Stories"]});
@@ -428,7 +428,7 @@ function validity(){
   const msgs=[], R=RACES[state.race], S=finalScores();
   const req=R.req[state.cls];
   if(req && withRace(req[0])<req[1]) msgs.push(`${state.race} ${state.cls} needs ${req[1]}+ ${req[0]} (has ${withRace(req[0])} after racial boost).`);
-  if(state.archFeats.length!==2) msgs.push(`Pick ${2-state.archFeats.length>0?2-state.archFeats.length+" more":"exactly 2"} archetype class abilit${state.archFeats.length===1?"y":"ies"}.`);
+  {const L=archLimit(),n=state.archFeats.length;if(n!==L) msgs.push(n<L?`Pick ${L-n} more archetype class abilit${L-n===1?"y":"ies"}.`:`Pick exactly ${L} archetype class abilities.`);}
   const D=CLASSES[state.cls];
   if(D.caster){
     const cMax=3+(hasFeat("Pick +1 cantrip")?1:0);
@@ -438,7 +438,6 @@ function validity(){
   }
   if(state.ail[0]===state.ail[1]) msgs.push("Pick two different ailments.");
   if(!state.faithful) msgs.push("Name your signature magic item.");
-  if(RACES[state.race].choose&&state.boosts[0]===state.boosts[1]) msgs.push("Human +2 boosts must go to two different abilities.");
   if(TRAITS[state.race]&&(state.traits||[]).length!==2) msgs.push(`Pick 2 ${state.race} traits (${(state.traits||[]).length} chosen).`);
   return msgs;
 }
@@ -463,7 +462,7 @@ function buildJSON(){
     generatedAt:new Date().toISOString(),
     player:state.player,name:state.name,race:state.race,class:state.cls,archetype:state.arch,
     level:9,xp:100000,proficiencyBonus:x.prof,
-    abilityMethod:{roll:RACES[state.race].dice+"d6 drop "+RACES[state.race].drop,racialBoosts:Object.fromEntries(AB.filter(a=>racial(a)).map(a=>[a,racial(a)])),humanBoosts:RACES[state.race].choose?state.boosts:null},
+    abilityMethod:{roll:RACES[state.race].dice+"d6 drop "+RACES[state.race].drop,racialBoosts:Object.fromEntries(AB.filter(a=>racial(a)).map(a=>[a,racial(a)])),humanBoost:RACES[state.race].choose?state.boosts[0]:null},
     racialTraits:RACES[state.race].choose?[]:(state.traits||[]).map(t=>({name:t,text:(TRAITS[state.race].find(z=>z[0]===t)||[])[1]})),
     abilities:Object.fromEntries(AB.map(a=>[a,{base:state.base[a],racial:racial(a),score:x.S[a],mod:x.M[a]}])),
     abilityIncreases:[4,6,8].map(l=>({level:l,ability:state.inc[l]})),
@@ -499,7 +498,7 @@ function renderForm(){
   const S=finalScores();
   $("abilBox").innerHTML=AB.map(a=>`<div class="ab"><b>${a}</b><input id="ab_${a}" type="number" min="1" max="20" value="${state.base[a]}" aria-label="${a} rolled score"><span class="mod">${fmt(mod(S[a]))}</span><span class="fin">${racial(a)?`<b class="rb">+${racial(a)} race</b> · `:""}final ${S[a]}</span></div>`).join("");
   AB.forEach(a=>{$("ab_"+a).addEventListener("change",e=>{state.base[a]=Math.max(1,Math.min(20,+e.target.value||1));update();});});
-  $("boostRow").hidden=!RACES[state.race].choose;if(state.boosts[1]===state.boosts[0])state.boosts[1]=AB.find(a=>a!==state.boosts[0]);opt($("fBoost"),AB,state.boosts[0]);opt($("fBoost2"),AB.filter(a=>a!==state.boosts[0]),state.boosts[1]);
+  $("boostRow").hidden=!RACES[state.race].choose;opt($("fBoost"),AB,state.boosts[0]);
   const TL=TRAITS[state.race];$("traitWrap").hidden=!TL;
   if(TL){state.traits=(state.traits||[]).filter(t=>TL.some(z=>z[0]===t));
     $("traitHead").textContent=`${state.race} traits: pick 2 (${state.traits.length}/2)`;
@@ -512,8 +511,10 @@ function renderForm(){
   opt($("fArch"),Object.keys(C.arch),state.arch);
   $("fHpMethod").value=state.hpMethod;
   const feats=C.arch[state.arch].feats;
-  $("archPicks").innerHTML=feats.map((f,i)=>{const on=state.archFeats.includes(f),dis=!on&&state.archFeats.length>=2;return `<label class="pick${on?" on":""}${dis?" dis":""}" for="af_${i}"><input type="checkbox" id="af_${i}" ${on?"checked":""} ${dis?"disabled":""}><span>${esc(f)}</span></label>`}).join("");
-  feats.forEach((f,i)=>$("af_"+i).addEventListener("change",e=>{if(e.target.checked){if(state.archFeats.length<2)state.archFeats.push(f)}else state.archFeats=state.archFeats.filter(z=>z!==f);
+  state.archFeats=state.archFeats.slice(0,archLimit());
+  $("archHead").textContent=`Archetype Class Abilities: pick ${archLimit()}${state.race==="Human"?" (human house rule)":""}`;
+  $("archPicks").innerHTML=feats.map((f,i)=>{const on=state.archFeats.includes(f),dis=!on&&state.archFeats.length>=archLimit();return `<label class="pick${on?" on":""}${dis?" dis":""}" for="af_${i}"><input type="checkbox" id="af_${i}" ${on?"checked":""} ${dis?"disabled":""}><span>${esc(f)}</span></label>`}).join("");
+  feats.forEach((f,i)=>$("af_"+i).addEventListener("change",e=>{if(e.target.checked){if(state.archFeats.length<archLimit())state.archFeats.push(f)}else state.archFeats=state.archFeats.filter(z=>z!==f);
     if(!hasFeat("Pick +1 cantrip")&&state.spells[0].length>3)state.spells[0]=state.spells[0].slice(0,3);update();}));
   renderSpells();
   opt($("fArmor"),C.armor.concat(hasFeat("Wear light armor")&&!C.armor.includes("Light")?["Light"]:[]),state.armor);
@@ -617,7 +618,6 @@ function bindStatic(){
   ["fFaithful","fFaithfulProps"].forEach(id=>$(id).addEventListener("input",renderFaithfulGear));T("fFortune","fortune");
   $("fRace").addEventListener("change",e=>{state.race=e.target.value;update();});
   $("fBoost").addEventListener("change",e=>{state.boosts[0]=e.target.value;update();});
-  $("fBoost2").addEventListener("change",e=>{state.boosts[1]=e.target.value;update();});
   [4,6,8].forEach(l=>$("fInc"+l).addEventListener("change",e=>{state.inc[l]=e.target.value;update();}));
   $("fClass").addEventListener("change",e=>{state.cls=e.target.value;const C=CLASSES[state.cls];state.arch=Object.keys(C.arch)[0];state.archFeats=[];
     state.spells={0:[],1:[],2:[],3:[],4:[],5:[]};state.cantripUpgrade="";state.hpRolls=[];
@@ -655,11 +655,11 @@ function randomVeteran(){
   {const prime0={Warrior:"STR",Thief:"DEX",Zealot:"WIS",Mage:"INT"}[state.cls];
    const order=[prime0,"CON",...AB.filter(a=>a!==prime0&&a!=="CON")];
    const r=rollSix().sort((a,b)=>b-a);order.forEach((a,i)=>state.base[a]=r[i]);
-   state.boosts=[prime0,"CON"];if(TRAITS[state.race])state.traits=[...TRAITS[state.race]].sort(()=>Math.random()-.5).slice(0,2).map(t=>t[0]);
+   state.boosts=[prime0];if(TRAITS[state.race])state.traits=[...TRAITS[state.race]].sort(()=>Math.random()-.5).slice(0,2).map(t=>t[0]);
    const rq=RACES[state.race].req[state.cls];if(rq&&withRace(rq[0])<rq[1])state.base[rq[0]]=rq[1]-racial(rq[0]);}
   const C=CLASSES[state.cls];
   state.arch=pick(Object.keys(C.arch));
-  const f=[...C.arch[state.arch].feats].sort(()=>Math.random()-.5);state.archFeats=f.slice(0,2);
+  const f=[...C.arch[state.arch].feats].sort(()=>Math.random()-.5);state.archFeats=f.slice(0,archLimit());
   const prime={Warrior:"STR",Thief:"DEX",Zealot:"WIS",Mage:"INT"}[state.cls];
   state.inc={4:prime,6:"CON",8:prime};
   state.armor=C.armor[0];state.shield=state.cls==="Thief"?"no":"yes";
@@ -688,7 +688,7 @@ function importJSON(e){
   r.onload=()=>{try{
     const j=JSON.parse(r.result);if(j.schema!=="ftd-veteran/1")throw new Error("schema");
     Object.assign(state,blank(),{player:j.player||"",name:j.name||"",race:j.race,cls:j.class,arch:j.archetype,
-      boosts:(j.abilityMethod&&(j.abilityMethod.humanBoosts||(j.abilityMethod.humanBoost?[j.abilityMethod.humanBoost,"CON"]:null)))||["STR","CON"],traits:(j.racialTraits||[]).map(t=>t.name),base:Object.fromEntries(AB.map(a=>[a,j.abilities[a].base])),inc:Object.fromEntries(j.abilityIncreases.map(i=>[i.level,i.ability])),
+      boosts:[(j.abilityMethod&&(j.abilityMethod.humanBoost||(j.abilityMethod.humanBoosts||[])[0]))||"STR"],traits:(j.racialTraits||[]).map(t=>t.name),base:Object.fromEntries(AB.map(a=>[a,j.abilities[a].base])),inc:Object.fromEntries(j.abilityIncreases.map(i=>[i.level,i.ability])),
       hpMethod:j.hp.method==="roll"?"roll":"average",hpRolls:j.hp.method==="roll"?j.hp.levelUps.map(v=>v-mod(j.abilities.CON.score)):[],
       archFeats:(j.classAbilities?j.classAbilities.filter(f=>f.source==="archetype"):(j.archetypeFeatures||[])).map(f=>f.text),armor:j.ac.armor,shield:j.ac.shield?"yes":"no",sup:j.limits.supplyCarried,
       retainers:(j.retainers||[]).map(r=>r.category),weapons:j.equipment.weapons||[],legend:j.veteran.legend||"",faithful:(typeof j.veteran.oldFaithful==="object"?j.veteran.oldFaithful.name:j.veteran.oldFaithful)||"",faithfulProps:(j.veteran.oldFaithful&&j.veteran.oldFaithful.properties)||"",fortune:j.veteran.spentFortune||"",
