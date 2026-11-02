@@ -1,11 +1,4 @@
-<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<style>body{margin:0;font-family:system-ui,sans-serif;font-size:14px}img{max-width:100%}[hidden]{display:none!important}</style>
-</head>
-<body>
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
 <title>Veteran Forge</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -136,12 +129,8 @@ table.ailt td{border-top:1px solid var(--line);padding:4px 6px;vertical-align:to
           <label for="fSwapB">ability B<select id="fSwapB"></select></label>
           <label>&nbsp;<button id="btnSwap" type="button">Swap the two scores</button></label>
         </div>
-        <h3>Ability increases from levels 4, 6 and 8</h3>
-        <div class="row">
-          <label for="fInc4">Level 4<select id="fInc4"></select></label>
-          <label for="fInc6">Level 6<select id="fInc6"></select></label>
-          <label for="fInc8">Level 8<select id="fInc8"></select></label>
-        </div>
+        <h3 id="incHead">Ability increases from levels 4, 6 and 8</h3>
+        <div class="row" id="incRow"></div>
       </section>
 
       <section class="card">
@@ -154,9 +143,24 @@ table.ailt td{border-top:1px solid var(--line);padding:4px 6px;vertical-align:to
             <option value="roll">Roll each level</option>
           </select></label>
         </div>
+        <div class="row">
+          <label for="fMc">Multiclass (house rule)<select id="fMc"><option value="no">Single class</option><option value="yes">Two classes</option></select></label>
+        </div>
+        <div id="mcWrap" class="col" style="gap:12px">
+          <div class="row">
+            <label for="fMcClass">Second class<select id="fMcClass"></select></label>
+            <label for="fMcArch">Second archetype<select id="fMcArch"></select></label>
+            <label for="fMcSplit">Level split<select id="fMcSplit"></select></label>
+          </div>
+          <p class="note" id="mcNote"></p>
+        </div>
         <p class="warn" id="classWarn"></p>
         <h3 id="archHead">Archetype Class Abilities: pick 2</h3>
         <div class="picks" id="archPicks"></div>
+        <div id="mcArchWrap" class="col" style="gap:8px">
+          <h3 id="mcArchHead"></h3>
+          <div class="picks" id="mcArchPicks"></div>
+        </div>
       </section>
 
       <section class="card" id="spellCard">
@@ -244,7 +248,6 @@ const RACES={ // homebrew: rolled stats + racial boosts
   Elf:{bonus:{DEX:2,INT:2},dice:4,drop:1,req:{Warrior:["STR",13],Zealot:["WIS",13]},note:"Roll 4d6, drop the lowest, six times. Assign or swap rolls freely. +2 DEX and +2 INT. Warrior needs 13+ STR, Zealot 13+ WIS."},
   Halfling:{bonus:{WIS:2,CHA:2},dice:4,drop:1,req:{Warrior:["STR",13],Mage:["INT",13]},note:"Roll 4d6, drop the lowest, six times. Assign or swap rolls freely. +2 WIS and +2 CHA. Warrior needs 13+ STR, Mage 13+ INT."}
 };
-function archLimit(){return state.race==="Human"?3:2;}
 function racial(a){const R=RACES[state.race];return (R.bonus[a]||0)+(R.choose&&state.boosts[0]===a?2:0);}
 const TRAITS={ // homebrew racial traits, adapted from classic D&D race features
   Dwarf:[
@@ -358,9 +361,30 @@ function faithfulJSON(){return {name:state.faithful,properties:state.faithfulPro
 const FORTUNE=["Bought a farm, lost it to the tax collector","Gambled it in the river-barges of Ost","Paid for three daughters' weddings","Spent it on a tavern that burned down","Gave it to the temple that patched me up"];
 const NAMES=["Old Brann","Mother Ysolde","Tamsin Greyhand","Corvin the Late","Hob Ashwillow","Sister Marrow","Dagny Ironvow","Pell Tuckett"];
 
+// ---------- multiclass (house rule) ----------
+// Rulings: HP = first class's starting HP, then each class's die for its levels; class abilities and
+// ability +1s come from each class's own table up to its level; archetype picks only from slots each class
+// reaches (3rd and 7th class level); casting uses only the caster class's level; "/level" means that class's level.
+const PRIME={Warrior:"STR",Thief:"DEX",Zealot:"WIS",Mage:"INT"};
+function primLv(){return state.mc?9-state.mc.levels:9;}
+function secLv(){return state.mc?state.mc.levels:0;}
+function archSlots(L){return (L>=3?1:0)+(L>=7?1:0);}
+function primArchLimit(){return archSlots(primLv())+(state.race==="Human"?1:0);}
+function secArchLimit(){return state.mc?archSlots(secLv()):0;}
+function archLimit(){return primArchLimit()+secArchLimit();}
+function allArch(){return state.archFeats.concat(state.mc?state.mcFeats:[]);}
+function classParts(){const p=[{cls:state.cls,arch:state.arch,lv:primLv(),feats:state.archFeats,key:""}];if(state.mc)p.push({cls:state.mc.cls,arch:state.mc.arch,lv:secLv(),feats:state.mcFeats,key:"s"});return p;}
+function incSlots(){return classParts().flatMap(p=>[4,6,8].filter(l=>l<=p.lv).map(l=>({key:p.key+l,level:l,cls:p.cls,label:state.mc?`${p.cls} level ${l}`:`Level ${l}`})));}
+function casterPart(){return classParts().find(p=>CLASSES[p.cls].caster)||null;}
+function maxSpellLv(){const c=casterPart();return c?Math.min(5,Math.ceil(c.lv/2)):0;} // assumption: spell levels up to half caster level, rounded up (5 at level 9)
+function lvNote(t,p){return state.mc&&/per level|\/level|your level/i.test(t)?`${t} (uses ${p.cls} level ${p.lv})`:t;}
+const stripLvNote=t=>String(t).replace(/ \(uses \w+ level \d\)$/,"");
+function secondChoices(){return Object.keys(CLASSES).filter(c=>c!==state.cls&&!(CLASSES[c].caster&&CLASSES[state.cls].caster));}
+function armorList(){const s=new Set();classParts().forEach(p=>CLASSES[p.cls].armor.forEach(a=>s.add(a)));if(hasFeat("Wear light armor"))s.add("Light");return ["Heavy","Light","None"].filter(a=>s.has(a));}
+
 const state={};
 const blank=()=>({player:"",name:"",race:"Human",boosts:["STR"],traits:[],retainers:[],base:{STR:10,DEX:10,CON:10,INT:10,WIS:10,CHA:10},
-  inc:{4:"STR",6:"CON",8:"STR"},cls:"Warrior",arch:"Barbarian",hpMethod:"average",hpRolls:[],
+  inc:{4:"STR",6:"CON",8:"STR"},cls:"Warrior",arch:"Barbarian",mc:null,mcFeats:[],hpMethod:"average",hpRolls:[],
   archFeats:[],spells:{0:[],1:[],2:[],3:[],4:[],5:[]},cantripUpgrade:"",armor:"Heavy",shield:"no",sup:10,weapons:[],
   legend:"",faithful:"",faithfulProps:"",fortune:"",rusty:[],wisdom:WISDOM[0][0],ail:["Bad Knee","Old Wound"]});
 
@@ -375,8 +399,10 @@ Object.assign(state,example());
 // ---------- derived ----------
 // Final-state features at level 9: drop progression noise and anything a later level replaces
 const SUPERSEDED=new Set(["Make two full attacks as one active action"]);
-function finalFeatures(C){return Object.entries(C.levels).filter(([l,t])=>+l>=2&&!t.startsWith("+1 to")&&!t.startsWith("Pick")&&!SUPERSEDED.has(t));}
-function allAbilities(C){return finalFeatures(C).map(([l,t])=>t).concat(state.archFeats);}
+function partFeatures(p){return Object.entries(CLASSES[p.cls].levels).filter(([l,t])=>+l>=2&&+l<=p.lv&&!t.startsWith("+1 to")&&!t.startsWith("Pick")&&!(SUPERSEDED.has(t)&&p.lv>=9)).map(([l,t])=>({text:lvNote(t,p),gainedAt:+l,cls:p.cls}));}
+function finalFeatures(){return classParts().flatMap(partFeatures);}
+function archTexts(){return classParts().flatMap(p=>p.feats.map(f=>({text:lvNote(f,p),cls:p.cls,arch:p.arch})));}
+function allAbilities(){return finalFeatures().map(f=>f.text).concat(archTexts().map(f=>f.text));}
 // Closest ability score for a rusty-ability check: keyword match, else the class's prime score
 const RUST_RULES=[
  [/healing song/i,"CHA"],[/immune to charm/i,"WIS"],[/monster info/i,"INT"],[/max load/i,"STR"],
@@ -386,21 +412,22 @@ const RUST_RULES=[
  [/charm|perform|\blie\b|deceive|intimidat|diplomacy|orders|morale|song|tongues|strategy|help allies|phalanx/i,"CHA"],
  [/endurance|weather|immune|sleep|eat|hp|rage|fire damage|resist magic/i,"CON"],
  [/attack|counter|crit|dmg|damage|martial|armor|\bac\b/i,"STR"]];
-function rustStat(t){for(const [re,st] of RUST_RULES)if(re.test(t))return st;return {Warrior:"STR",Thief:"DEX",Zealot:"WIS",Mage:"INT"}[state.cls];}
-function fillAutoSpells(){const C=CLASSES[state.cls];if(C.caster)[1,2,3].forEach(l=>state.spells[l]=SPELLS[C.caster][l].map(z=>z[0]));}
+function rustStat(t){for(const [re,st] of RUST_RULES)if(re.test(t))return st;return PRIME[state.cls];}
+function fillAutoSpells(){const c=casterPart();if(!c)return;const T=SPELLS[CLASSES[c.cls].caster],m=maxSpellLv();[1,2,3].forEach(l=>state.spells[l]=l<=m?T[l].map(z=>z[0]):[]);[4,5].forEach(l=>{if(l>m)state.spells[l]=[];});}
 function finalScores(){
   const s={};AB.forEach(a=>s[a]=withRace(a));
-  [4,6,8].forEach(l=>{if(state.inc[l]) s[state.inc[l]]++;});
+  incSlots().forEach(x=>{const a=state.inc[x.key];if(a)s[a]++;});
   return s;
 }
-function hasFeat(t){return state.archFeats.some(f=>f.startsWith(t));}
+function hasFeat(t){return allArch().some(f=>f.startsWith(t));}
 function derive(){
   const C=CLASSES[state.cls], S=finalScores(), M={};AB.forEach(a=>M[a]=mod(S[a]));
   const prof=4, conM=M.CON;
-  const avg=Math.ceil((C.die+1)/2);
+  const C2=state.mc?CLASSES[state.mc.cls]:null, parts=classParts();
   const ups=[];
   for(let i=0;i<8;i++){
-    const r=state.hpMethod==="roll"?(state.hpRolls[i]||(state.hpRolls[i]=d(C.die))):avg;
+    const die=(C2&&i>=primLv()-1)?C2.die:C.die;
+    const r=state.hpMethod==="roll"?(state.hpRolls[i]||(state.hpRolls[i]=d(die))):Math.ceil((die+1)/2);
     ups.push(Math.max(1,r+conM));
   }
   let hp=Math.max(1,C.startHp+conM)+ups.reduce((a,b)=>a+b,0);
@@ -415,26 +442,29 @@ function derive(){
   if(state.shield==="yes"){ac+=2;acNote+=", shield +2"}
   if(hasFeat("+1 permanent AC")){ac+=1;acNote+=", +1 class ability"}
   const speed=30+(hasFeat("+10' move")?10:0);
-  const archChecks=(C.arch[state.arch]||{checks:[]}).checks;
+  const archChecks=parts.filter(p=>p.lv>=3).flatMap(p=>(CLASSES[p.cls].arch[p.arch]||{checks:[]}).checks);
+  const classChecks=[...new Set(parts.flatMap(p=>CLASSES[p.cls].checks))];
   const highest=Math.max(...AB.map(a=>M[a]));
   let load=S.STR+(hasFeat("+4 max load")?4:0);
-  const tradition=C.caster;
+  const cp=casterPart(), tradition=cp?CLASSES[cp.cls].caster:null;
   const castMod=tradition==="Arcane"?M.INT+prof:tradition==="Divine"?M.WIS+prof:null;
-  const martial=C.weapons==="All"||hasFeat("Martial proficiency");
-  return {C,S,M,prof,hp,ups,ac,acNote,speed,archChecks,highest,load,tradition,castMod,martial,
+  const martial=parts.some(p=>CLASSES[p.cls].weapons==="All")||hasFeat("Martial proficiency");
+  return {C,C2,parts,cp,S,M,prof,hp,ups,ac,acNote,speed,archChecks,classChecks,highest,load,tradition,castMod,martial,
     retainerCap:Math.max(0,M.CHA-(state.ail.includes("Outlived Your Friends")?1:0)),hench:Math.max(0,M.CHA+9-5),renown:highest+9};
 }
 function validity(){
   const msgs=[], R=RACES[state.race], S=finalScores();
-  const req=R.req[state.cls];
-  if(req && withRace(req[0])<req[1]) msgs.push(`${state.race} ${state.cls} needs ${req[1]}+ ${req[0]} (has ${withRace(req[0])} after racial boost).`);
-  {const L=archLimit(),n=state.archFeats.length;if(n!==L) msgs.push(n<L?`Pick ${L-n} more archetype class abilit${L-n===1?"y":"ies"}.`:`Pick exactly ${L} archetype class abilities.`);}
-  const D=CLASSES[state.cls];
-  if(D.caster){
+  classParts().forEach(p=>{const req=R.req[p.cls];
+    if(req && withRace(req[0])<req[1]) msgs.push(`${state.race} ${p.cls} needs ${req[1]}+ ${req[0]} (has ${withRace(req[0])} after racial boost).`);});
+  classParts().forEach((p,i)=>{const L=i?secArchLimit():primArchLimit(),n=p.feats.length,who=state.mc?` (${p.arch})`:"";
+    if(n!==L) msgs.push(n<L?`Pick ${L-n} more archetype class abilit${L-n===1?"y":"ies"}${who}.`:`Pick exactly ${L} archetype class abilit${L===1?"y":"ies"}${who}.`);});
+  if(state.mc&&classParts().some(p=>CLASSES[p.cls].weapons==="All")&&allArch().includes("Martial proficiency")) msgs.push("Martial proficiency is wasted: your other class already uses all weapons. Pick another ability.");
+  const cp=casterPart();
+  if(cp){
     const cMax=3+(hasFeat("Pick +1 cantrip")?1:0);
     if(state.spells[0].length!==cMax) msgs.push(`Pick ${cMax} cantrips (${state.spells[0].length} chosen).`);
-    [4,5].forEach(l=>{if(state.spells[l].length!==KNOWN9[l]) msgs.push(`Pick ${KNOWN9[l]} level-${l} spell${KNOWN9[l]>1?"s":""} (${state.spells[l].length} chosen).`);});
-    if(state.cls==="Mage"&&!state.cantripUpgrade) msgs.push("Level 9: pick one known spell (level 1–3) to become a cantrip.");
+    [4,5].filter(l=>l<=maxSpellLv()).forEach(l=>{if(state.spells[l].length!==KNOWN9[l]) msgs.push(`Pick ${KNOWN9[l]} level-${l} spell${KNOWN9[l]>1?"s":""} (${state.spells[l].length} chosen).`);});
+    if(cp.cls==="Mage"&&cp.lv>=9&&!state.cantripUpgrade) msgs.push("Level 9: pick one known spell (level 1–3) to become a cantrip.");
   }
   if(state.ail[0]===state.ail[1]) msgs.push("Pick two different ailments.");
   if(!state.faithful) msgs.push("Name your signature magic item.");
@@ -444,15 +474,15 @@ function validity(){
 
 // ---------- json ----------
 function buildJSON(){
-  fillAutoSpells();syncRetainers();state.rusty=allAbilities(CLASSES[state.cls]);
+  fillAutoSpells();syncRetainers();state.rusty=allAbilities();
   const x=derive(), C=x.C, A=C.arch[state.arch];
   const ail=state.ail.map((n,i)=>{const a=AILMENTS.find(z=>z[0]===n)||AILMENTS[0];return {d100:AILMENTS.indexOf(a)+1,id:a[0].toLowerCase().replace(/[^a-z]+/g,"-").replace(/^-|-$/g,""),category:a[3],name:a[0],base:a[0],trigger:a[1],effect:a[2]};});
   const w=WISDOM.find(z=>z[0]===state.wisdom)||WISDOM[0];
   const spellObj=x.tradition?{
-    tradition:x.tradition,castingAbility:x.tradition==="Arcane"?"INT":"WIS",checkModifier:x.castMod,
+    tradition:x.tradition,casterClass:x.cp.cls,casterLevel:x.cp.lv,maxSpellLevel:maxSpellLv(),castingAbility:x.tradition==="Arcane"?"INT":"WIS",checkModifier:x.castMod,
     checkDC:"10 + spell level",
     cantrips:state.spells[0].map(n=>({name:n,text:(SPELLS[x.tradition][0].find(z=>z[0]===n)||[])[1]})),
-    bonusCantrip:state.cls==="Mage"&&state.cantripUpgrade?state.cantripUpgrade:null,
+    bonusCantrip:x.cp.cls==="Mage"&&x.cp.lv>=9&&state.cantripUpgrade?state.cantripUpgrade:null,
     known:Object.fromEntries([1,2,3,4,5].map(l=>[l,state.spells[l].map(n=>({name:n,text:(SPELLS[x.tradition][l].find(z=>z[0]===n)||[])[1]}))]))
   }:null;
   return {
@@ -462,19 +492,22 @@ function buildJSON(){
     generatedAt:new Date().toISOString(),
     player:state.player,name:state.name,race:state.race,class:state.cls,archetype:state.arch,
     level:9,xp:100000,proficiencyBonus:x.prof,
+    classes:x.parts.map(p=>({class:p.cls,archetype:p.lv>=3?p.arch:null,levels:p.lv})),
+    multiclass:!!state.mc,
     abilityMethod:{roll:RACES[state.race].dice+"d6 drop "+RACES[state.race].drop,racialBoosts:Object.fromEntries(AB.filter(a=>racial(a)).map(a=>[a,racial(a)])),humanBoost:RACES[state.race].choose?state.boosts[0]:null},
     racialTraits:RACES[state.race].choose?[]:(state.traits||[]).map(t=>({name:t,text:(TRAITS[state.race].find(z=>z[0]===t)||[])[1]})),
     abilities:Object.fromEntries(AB.map(a=>[a,{base:state.base[a],racial:racial(a),score:x.S[a],mod:x.M[a]}])),
-    abilityIncreases:[4,6,8].map(l=>({level:l,ability:state.inc[l]})),
-    hp:{max:x.hp,method:state.hpMethod,start:Math.max(1,C.startHp+x.M.CON),levelUps:x.ups,hitDie:"d"+C.die},
+    abilityIncreases:incSlots().map(s=>({slot:s.key,class:s.cls,level:s.level,ability:state.inc[s.key]})),
+    hp:{max:x.hp,method:state.hpMethod,start:Math.max(1,C.startHp+x.M.CON),levelUps:x.ups,hitDie:"d"+C.die,
+      hitDice:x.parts.map(p=>({class:p.cls,die:"d"+CLASSES[p.cls].die,count:p.lv}))},
     ac:{value:x.ac,armor:state.armor,shield:state.shield==="yes",breakdown:x.acNote},
     speed:x.speed,initiative:x.S.DEX,
     attacks:{melee:x.M.STR+x.prof,ranged:x.M.DEX+x.prof,
       weapons:state.weapons.map(n=>{const wp=WEAPONS.find(z=>z[0]===n);const prof=weaponProf(wp,x.martial);return {name:n,damage:wp[1],type:wp[2],notes:wp[3],proficient:prof};})},
     limits:{maxLoad:x.load,supplyMax:x.S.INT,supplyCarried:Math.min(state.sup,x.S.INT),resilience:x.S.CON,maxRetainers:x.retainerCap,renown:x.renown},
-    proficiencies:{abilities:C.abilityProf,checks:C.checks,archetypeChecks:A.checks,
-      weapons:x.martial?"All":"Simple",armor:C.armor.filter(a=>a!=="None").concat(hasFeat("Wear light armor")?["Light"]:[])},
-    classAbilities:[...finalFeatures(C).map(([l,t])=>({text:t,source:"class",gainedAt:+l})),...state.archFeats.map(f=>({text:f,source:"archetype"}))].map(a=>{
+    proficiencies:{abilities:C.abilityProf,checks:x.classChecks,archetypeChecks:x.archChecks,
+      weapons:x.martial?"All":"Simple",armor:armorList().filter(a=>a!=="None")},
+    classAbilities:[...finalFeatures().map(f=>({text:f.text,source:"class",class:f.cls,gainedAt:f.gainedAt})),...archTexts().map(f=>({text:f.text,source:"archetype",class:f.cls,archetype:f.arch}))].map(a=>{
       const r=state.rusty.includes(a.text),st=rustStat(a.text);
       return r?{...a,rusty:true,rustyCheck:{ability:st,modifier:x.M[st],dc:12,onFail:"does not work or only partly works (GM's call)",clearsOnSuccess:true}}:{...a,rusty:false};}),
     spellcasting:spellObj,
@@ -505,19 +538,23 @@ function renderForm(){
     $("traitPicks").innerHTML=TL.map((t,i)=>{const on=state.traits.includes(t[0]),dis=!on&&state.traits.length>=2;return `<label class="pick${on?" on":""}${dis?" dis":""}" for="rt_${i}"><input type="checkbox" id="rt_${i}" ${on?"checked":""} ${dis?"disabled":""}><span>${esc(t[0])}<em>${esc(t[1])}</em></span></label>`}).join("");
     TL.forEach((t,i)=>$("rt_"+i).addEventListener("change",e=>{state.traits=e.target.checked?[...state.traits,t[0]].slice(0,2):state.traits.filter(z=>z!==t[0]);update();}));}
   opt($("fSwapA"),AB,$("fSwapA").value||"STR");opt($("fSwapB"),AB,$("fSwapB").value||"DEX");
-  [4,6,8].forEach(l=>opt($("fInc"+l),AB,state.inc[l]));
+  {const sl=incSlots();sl.forEach(x=>{if(!state.inc[x.key])state.inc[x.key]=PRIME[x.cls];});
+   $("incHead").textContent=state.mc?"Ability increases: levels 4, 6 and 8 of each class":"Ability increases from levels 4, 6 and 8";
+   $("incRow").innerHTML=sl.map(x=>`<label for="fInc_${x.key}">${esc(x.label)}<select id="fInc_${x.key}"></select></label>`).join("");
+   sl.forEach(x=>{opt($("fInc_"+x.key),AB,state.inc[x.key]);$("fInc_"+x.key).addEventListener("change",e=>{state.inc[x.key]=e.target.value;update();});});}
   opt($("fClass"),Object.keys(CLASSES),state.cls);
   const C=CLASSES[state.cls];
   opt($("fArch"),Object.keys(C.arch),state.arch);
   $("fHpMethod").value=state.hpMethod;
   const feats=C.arch[state.arch].feats;
-  state.archFeats=state.archFeats.slice(0,archLimit());
-  $("archHead").textContent=`Archetype Class Abilities: pick ${archLimit()}${state.race==="Human"?" (human house rule)":""}`;
-  $("archPicks").innerHTML=feats.map((f,i)=>{const on=state.archFeats.includes(f),dis=!on&&state.archFeats.length>=archLimit();return `<label class="pick${on?" on":""}${dis?" dis":""}" for="af_${i}"><input type="checkbox" id="af_${i}" ${on?"checked":""} ${dis?"disabled":""}><span>${esc(f)}</span></label>`}).join("");
-  feats.forEach((f,i)=>$("af_"+i).addEventListener("change",e=>{if(e.target.checked){if(state.archFeats.length<archLimit())state.archFeats.push(f)}else state.archFeats=state.archFeats.filter(z=>z!==f);
+  state.archFeats=state.archFeats.slice(0,primArchLimit());
+  $("archHead").textContent=`${state.mc?state.arch+" ":"Archetype "}Class Abilities: pick ${primArchLimit()}${state.race==="Human"?" (human house rule)":""}`;
+  $("archPicks").innerHTML=feats.map((f,i)=>{const on=state.archFeats.includes(f),dis=!on&&state.archFeats.length>=primArchLimit();return `<label class="pick${on?" on":""}${dis?" dis":""}" for="af_${i}"><input type="checkbox" id="af_${i}" ${on?"checked":""} ${dis?"disabled":""}><span>${esc(f)}</span></label>`}).join("");
+  feats.forEach((f,i)=>$("af_"+i).addEventListener("change",e=>{if(e.target.checked){if(state.archFeats.length<primArchLimit())state.archFeats.push(f)}else state.archFeats=state.archFeats.filter(z=>z!==f);
     if(!hasFeat("Pick +1 cantrip")&&state.spells[0].length>3)state.spells[0]=state.spells[0].slice(0,3);update();}));
+  renderMulticlass();
   renderSpells();
-  opt($("fArmor"),C.armor.concat(hasFeat("Wear light armor")&&!C.armor.includes("Light")?["Light"]:[]),state.armor);
+  {const al=armorList();if(!al.includes(state.armor))state.armor=al[0];opt($("fArmor"),al,state.armor);}
   $("fShield").value=state.shield;$("fSup").value=state.sup;$("fSup").max=finalScores().INT;
   const x=derive();
   const avail=WEAPONS.filter(w=>!state.weapons.includes(w[0]));
@@ -533,7 +570,7 @@ function renderForm(){
   $("retList").querySelectorAll("button[data-ri]").forEach(b=>b.addEventListener("click",()=>{state.retainers[+b.dataset.ri]=rollRetainer();update();}));
   renderFaithfulGear();
   $("fLegend").value=state.legend;$("fFaithful").value=state.faithful;$("fFaithfulProps").value=state.faithfulProps;$("fFortune").value=state.fortune;
-  const abil=allAbilities(C);
+  const abil=allAbilities();
   state.rusty=abil.slice();
   $("rustList").innerHTML=abil.map((t,i)=>{const on=state.rusty.includes(t),st=rustStat(t),m=mod(finalScores()[st]);
     return `<label class="pick dis" for="ru_${i}"><input type="checkbox" id="ru_${i}" checked disabled><span>${esc(t)}<em>Rusty · DC 12 ${st} check (${fmt(m)})</em></span></label>`}).join("");
@@ -550,26 +587,47 @@ function ailSelect(sel,val){
   sel.innerHTML=Object.entries(groups).map(([g,items])=>`<optgroup label="${esc(g)}">`+items.map(([k,l])=>`<option value="${esc(k)}"${k===val?" selected":""}>${esc(l)}</option>`).join("")+`</optgroup>`).join("");
 }
 function renderFaithfulGear(){$("faithfulGear").innerHTML=`<span class="fb-label">Signature magic item · edit under Veteran traits</span><b>${esc(state.faithful||"Not named yet")}</b>${state.faithfulProps?`<span>${esc(state.faithfulProps)}</span>`:`<span class="fb-empty">No properties yet.</span>`}`;}
+function renderMulticlass(){
+  $("fMc").value=state.mc?"yes":"no";
+  $("mcWrap").hidden=!state.mc;
+  if(!state.mc){$("mcArchWrap").hidden=true;state.mcFeats=[];return;}
+  const ch=secondChoices();if(!ch.includes(state.mc.cls)){state.mc.cls=ch[0];state.mc.arch=Object.keys(CLASSES[ch[0]].arch)[0];state.mcFeats=[];}
+  const C2=CLASSES[state.mc.cls];
+  opt($("fMcClass"),ch,state.mc.cls);
+  opt($("fMcArch"),Object.keys(C2.arch),state.mc.arch);
+  opt($("fMcSplit"),[1,2,3,4,5,6,7,8].map(n=>[String(n),`${state.cls} ${9-n} / ${state.mc.cls} ${n}`]),String(state.mc.levels));
+  $("mcNote").textContent=`HP: ${state.cls} starting HP, then d${CLASSES[state.cls].die} for ${primLv()-1} levels and d${C2.die} for ${secLv()}. Archetype picks come only from the 3rd and 7th level of each class. Casters cast at their own class level, and "/level" means that class's level. Proficiency stays +4. One spellcasting class at most. Starting kit is the first class's.`;
+  const L=secArchLimit();state.mcFeats=state.mcFeats.slice(0,L);
+  $("mcArchWrap").hidden=false;
+  $("mcArchHead").textContent=L?`${state.mc.arch} Class Abilities: pick ${L}`:`${state.mc.arch}: no picks until ${state.mc.cls} level 3`;
+  const feats=C2.arch[state.mc.arch].feats;
+  $("mcArchPicks").innerHTML=L?feats.map((f,i)=>{const on=state.mcFeats.includes(f),dis=!on&&state.mcFeats.length>=L;return `<label class="pick${on?" on":""}${dis?" dis":""}" for="mf_${i}"><input type="checkbox" id="mf_${i}" ${on?"checked":""} ${dis?"disabled":""}><span>${esc(f)}</span></label>`}).join(""):"";
+  if(L)feats.forEach((f,i)=>$("mf_"+i).addEventListener("change",e=>{if(e.target.checked){if(state.mcFeats.length<L)state.mcFeats.push(f)}else state.mcFeats=state.mcFeats.filter(z=>z!==f);update();}));
+}
 function renderSpells(){
-  const C=CLASSES[state.cls];
-  if(!C.caster){$("spellCard").hidden=true;return}
+  const cp=casterPart();
+  if(!cp){$("spellCard").hidden=true;return}
   $("spellCard").hidden=false;
-  const T=SPELLS[C.caster], cMax=3+(hasFeat("Pick +1 cantrip")?1:0);
-  $("spellNote").textContent=`Casting check: 1d20 + ${C.caster==="Arcane"?"INT":"WIS"} mod + 4 vs DC 10 + spell level.`;
+  const trad=CLASSES[cp.cls].caster, T=SPELLS[trad], m=maxSpellLv(), cMax=3+(hasFeat("Pick +1 cantrip")?1:0);
+  $("spellNote").textContent=`Casting check: 1d20 + ${trad==="Arcane"?"INT":"WIS"} mod + 4 vs DC 10 + spell level.`+(state.mc?` Casts as a level-${cp.lv} ${cp.cls}: spell levels 1–${m} (levels 1–${Math.min(3,m)} known in full), and "/lvl" in spell text means ${cp.lv}.`:"");
   const lim={0:cMax,...KNOWN9};
   let html="";
-  [0,4,5].forEach(l=>{
+  const known=l=>`<div><h3>Level ${l} · all ${T[l].length} known</h3><div class="picks" style="margin-top:6px">`+
+    T[l].map(s=>`<div class="pick on"><span>${esc(s[0])}<em>${esc(s[1])}</em></span></div>`).join("")+`</div></div>`;
+  [0,4,5].filter(l=>l<=m).forEach(l=>{
+    if(l===4)[1,2,3].filter(k=>k<=m).forEach(k=>html+=known(k));
     const sel=state.spells[l];
     html+=`<div><h3>${l?"Level "+l:"Cantrips"} · ${sel.length}/${lim[l]}</h3><div class="picks" style="margin-top:6px">`+
       T[l].map((s,i)=>{const on=sel.includes(s[0]);const dis=!on&&sel.length>=lim[l];return `<label class="pick${on?" on":""}${dis?" dis":""}" for="sp_${l}_${i}"><input type="checkbox" id="sp_${l}_${i}" ${on?"checked":""} ${dis?"disabled":""}><span>${esc(s[0])}<em>${esc(s[1])}</em></span></label>`}).join("")+`</div></div>`;
   });
-  if(state.cls==="Mage"){
+  if(m<4)[1,2,3].filter(k=>k<=m).forEach(k=>html+=known(k));
+  if(cp.cls==="Mage"&&cp.lv>=9){
     const pool=[1,2,3].flatMap(l=>state.spells[l]);
     if(!pool.includes(state.cantripUpgrade))state.cantripUpgrade="";
     html+=`<label for="fCantripUp">Level 9: a level 1–3 spell that becomes a cantrip<select id="fCantripUp"><option value="">Choose…</option>${pool.map(p=>`<option${p===state.cantripUpgrade?" selected":""}>${esc(p)}</option>`).join("")}</select></label>`;
   }
   $("spellBox").innerHTML=html;
-  [0,4,5].forEach(l=>T[l].forEach((s,i)=>$(`sp_${l}_${i}`).addEventListener("change",e=>{
+  [0,4,5].filter(l=>l<=m).forEach(l=>T[l].forEach((s,i)=>$(`sp_${l}_${i}`).addEventListener("change",e=>{
     state.spells[l]=e.target.checked?[...state.spells[l],s[0]]:state.spells[l].filter(z=>z!==s[0]);update();})));
   const cu=$("fCantripUp");if(cu)cu.addEventListener("change",e=>{state.cantripUpgrade=e.target.value;update();});
 }
@@ -580,7 +638,7 @@ function renderSheet(){
   const s=$("sheet");
   s.innerHTML=`
    <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:baseline">
-     <h2 style="font-size:1.7rem">${esc(j.name||"Unnamed veteran")}</h2><span class="tag">Level 9 · ${esc(j.race)} ${esc(j.class)} · ${esc(j.archetype)}</span>
+     <h2 style="font-size:1.7rem">${esc(j.name||"Unnamed veteran")}</h2><span class="tag">Level 9 · ${esc(j.race)} ${state.mc?j.classes.map(c=>`${esc(c.class)} ${c.levels}${c.archetype?` (${esc(c.archetype)})`:""}`).join(" / "):`${esc(j.class)} · ${esc(j.archetype)}`}</span>
    </div>
    <p class="note" style="margin-top:-8px">Player ${esc(j.player||"—")}${j.veteran.legend?` · “${esc(j.veteran.legend)}”`:""}</p>
    ${v.length?`<p class="warn">${v.map(esc).join("<br>")}</p>`:`<p class="status">Sheet complete. Ready to export.</p>`}
@@ -597,9 +655,9 @@ function renderSheet(){
    </div>
    <p class="note">AC: ${esc(j.ac.breakdown)}. HP: ${j.hp.start} at level 1 + ${j.hp.levelUps.join(" + ")} (${esc(j.hp.method)}).</p>
    ${j.racialTraits.length?`<h3>${esc(j.race)} traits</h3><p class="note" style="color:var(--ink)">${j.racialTraits.map(t=>`<b>${esc(t.name)}:</b> ${esc(t.text)}`).join("<br>")}</p>`:""}
-   <h3>Proficient checks</h3><p class="note" style="color:var(--ink)">${[...j.proficiencies.checks,...j.proficiencies.archetypeChecks].map(esc).join(", ")}${state.cls==="Thief"?" (archetype checks at double proficiency)":""}</p>
+   <h3>Proficient checks</h3><p class="note" style="color:var(--ink)">${[...j.proficiencies.checks,...j.proficiencies.archetypeChecks].map(esc).join(", ")}${classParts().some(p=>p.cls==="Thief"&&p.lv>=9)?" (archetype checks at double proficiency)":""}</p>
    <h3>Class Abilities</h3><ul>${j.classAbilities.map(f=>`<li>${esc(f.text)}${f.rusty?` <span class="tag">rusty · DC 12 ${f.rustyCheck.ability}</span>`:""}</li>`).join("")}</ul>
-   ${j.spellcasting?`<h3>Spells (${esc(j.spellcasting.tradition)})</h3><p class="note" style="color:var(--ink)"><b>Cantrips:</b> ${j.spellcasting.cantrips.map(c=>esc(c.name)).join(", ")||"—"}${j.spellcasting.bonusCantrip?`, ${esc(j.spellcasting.bonusCantrip)} (L9)`:""}<br>${[4,5].map(l=>`<b>L${l}:</b> ${j.spellcasting.known[l].map(c=>esc(c.name)).join(", ")||"—"}`).join("<br>")}</p>`:""}
+   ${j.spellcasting?`<h3>Spells (${esc(j.spellcasting.tradition)})</h3><p class="note" style="color:var(--ink)"><b>Cantrips:</b> ${j.spellcasting.cantrips.map(c=>esc(c.name)).join(", ")||"—"}${j.spellcasting.bonusCantrip?`, ${esc(j.spellcasting.bonusCantrip)} (L9)`:""}${[1,2,3].filter(l=>l<=j.spellcasting.maxSpellLevel).map(l=>`<br><b>L${l}:</b> ${j.spellcasting.known[l].map(c=>esc(c.name)).join(", ")}`).join("")}${[4,5].filter(l=>l<=j.spellcasting.maxSpellLevel).map(l=>`<br><b>L${l}:</b> ${j.spellcasting.known[l].map(c=>esc(c.name)).join(", ")||"—"}`).join("")}${state.mc?`<br><i>Casts as ${esc(j.spellcasting.casterClass)} ${j.spellcasting.casterLevel}</i>`:""}</p>`:""}
    ${j.retainers.length?`<h3>Hench</h3><p class="note" style="color:var(--ink)">${j.retainers.map(r=>esc(r.category)).join(", ")} (3 HD each)</p>`:""}
    <h3>Weapons</h3><p class="note" style="color:var(--ink)">${j.attacks.weapons.map(w=>`${esc(w.name)} ${esc(w.damage)}${w.proficient?"":" (no prof)"}`).join(" · ")||"—"}</p>
    <h3>Veteran</h3>
@@ -618,10 +676,15 @@ function bindStatic(){
   ["fFaithful","fFaithfulProps"].forEach(id=>$(id).addEventListener("input",renderFaithfulGear));T("fFortune","fortune");
   $("fRace").addEventListener("change",e=>{state.race=e.target.value;update();});
   $("fBoost").addEventListener("change",e=>{state.boosts[0]=e.target.value;update();});
-  [4,6,8].forEach(l=>$("fInc"+l).addEventListener("change",e=>{state.inc[l]=e.target.value;update();}));
   $("fClass").addEventListener("change",e=>{state.cls=e.target.value;const C=CLASSES[state.cls];state.arch=Object.keys(C.arch)[0];state.archFeats=[];
     state.spells={0:[],1:[],2:[],3:[],4:[],5:[]};state.cantripUpgrade="";state.hpRolls=[];
     if(!C.armor.includes(state.armor))state.armor=C.armor[0];update();});
+  $("fMc").addEventListener("change",e=>{if(e.target.value==="yes"){const c=secondChoices()[0];state.mc={cls:c,arch:Object.keys(CLASSES[c].arch)[0],levels:4};}else state.mc=null;
+    state.mcFeats=[];state.spells={0:[],1:[],2:[],3:[],4:[],5:[]};state.cantripUpgrade="";state.hpRolls=[];update();});
+  $("fMcClass").addEventListener("change",e=>{state.mc.cls=e.target.value;["s4","s6","s8"].forEach(k=>delete state.inc[k]);state.mc.arch=Object.keys(CLASSES[state.mc.cls].arch)[0];state.mcFeats=[];
+    state.spells={0:[],1:[],2:[],3:[],4:[],5:[]};state.cantripUpgrade="";state.hpRolls=[];update();});
+  $("fMcArch").addEventListener("change",e=>{state.mc.arch=e.target.value;state.mcFeats=[];update();});
+  $("fMcSplit").addEventListener("change",e=>{state.mc.levels=+e.target.value;state.hpRolls=[];update();});
   $("fArch").addEventListener("change",e=>{state.arch=e.target.value;state.archFeats=[];update();});
   $("fHpMethod").addEventListener("change",e=>{state.hpMethod=e.target.value;state.hpRolls=[];update();});
   $("fWeaponAdd").addEventListener("change",e=>{const v=e.target.value;if(v&&!state.weapons.includes(v)){state.weapons.push(v);update();}});
@@ -659,8 +722,8 @@ function randomVeteran(){
    const rq=RACES[state.race].req[state.cls];if(rq&&withRace(rq[0])<rq[1])state.base[rq[0]]=rq[1]-racial(rq[0]);}
   const C=CLASSES[state.cls];
   state.arch=pick(Object.keys(C.arch));
-  const f=[...C.arch[state.arch].feats].sort(()=>Math.random()-.5);state.archFeats=f.slice(0,archLimit());
-  const prime={Warrior:"STR",Thief:"DEX",Zealot:"WIS",Mage:"INT"}[state.cls];
+  const f=[...C.arch[state.arch].feats].sort(()=>Math.random()-.5);state.archFeats=f.slice(0,primArchLimit());
+  const prime=PRIME[state.cls];
   state.inc={4:prime,6:"CON",8:prime};
   state.armor=C.armor[0];state.shield=state.cls==="Thief"?"no":"yes";
   if(state.cls==="Mage"){state.shield="yes";}
@@ -688,9 +751,11 @@ function importJSON(e){
   r.onload=()=>{try{
     const j=JSON.parse(r.result);if(j.schema!=="ftd-veteran/1")throw new Error("schema");
     Object.assign(state,blank(),{player:j.player||"",name:j.name||"",race:j.race,cls:j.class,arch:j.archetype,
-      boosts:[(j.abilityMethod&&(j.abilityMethod.humanBoost||(j.abilityMethod.humanBoosts||[])[0]))||"STR"],traits:(j.racialTraits||[]).map(t=>t.name),base:Object.fromEntries(AB.map(a=>[a,j.abilities[a].base])),inc:Object.fromEntries(j.abilityIncreases.map(i=>[i.level,i.ability])),
+      mc:(j.classes&&j.classes.length>1)?{cls:j.classes[1].class,arch:j.classes[1].archetype||Object.keys(CLASSES[j.classes[1].class].arch)[0],levels:j.classes[1].levels}:null,
+      mcFeats:(j.classAbilities||[]).filter(f=>f.source==="archetype"&&j.classes&&j.classes.length>1&&f.class===j.classes[1].class).map(f=>stripLvNote(f.text)),
+      boosts:[(j.abilityMethod&&(j.abilityMethod.humanBoost||(j.abilityMethod.humanBoosts||[])[0]))||"STR"],traits:(j.racialTraits||[]).map(t=>t.name),base:Object.fromEntries(AB.map(a=>[a,j.abilities[a].base])),inc:Object.fromEntries(j.abilityIncreases.map(i=>[i.slot||String(i.level),i.ability])),
       hpMethod:j.hp.method==="roll"?"roll":"average",hpRolls:j.hp.method==="roll"?j.hp.levelUps.map(v=>v-mod(j.abilities.CON.score)):[],
-      archFeats:(j.classAbilities?j.classAbilities.filter(f=>f.source==="archetype"):(j.archetypeFeatures||[])).map(f=>f.text),armor:j.ac.armor,shield:j.ac.shield?"yes":"no",sup:j.limits.supplyCarried,
+      archFeats:(j.classAbilities?j.classAbilities.filter(f=>f.source==="archetype"&&(!f.class||f.class===j.class)):(j.archetypeFeatures||[])).map(f=>stripLvNote(f.text)),armor:j.ac.armor,shield:j.ac.shield?"yes":"no",sup:j.limits.supplyCarried,
       retainers:(j.retainers||[]).map(r=>r.category),weapons:j.equipment.weapons||[],legend:j.veteran.legend||"",faithful:(typeof j.veteran.oldFaithful==="object"?j.veteran.oldFaithful.name:j.veteran.oldFaithful)||"",faithfulProps:(j.veteran.oldFaithful&&j.veteran.oldFaithful.properties)||"",fortune:j.veteran.spentFortune||"",
       rusty:(j.classAbilities||[]).filter(a=>a.rusty).map(a=>a.text).concat([j.veteran.rustyClassAbility||j.veteran.rustyFeature].filter(Boolean)),wisdom:j.veteran.wisdomOfAge.name,ail:j.veteran.ailments.map(a=>a.base)});
     if(j.spellcasting){state.spells[0]=j.spellcasting.cantrips.map(c=>c.name);[1,2,3,4,5].forEach(l=>state.spells[l]=(j.spellcasting.known[l]||[]).map(c=>c.name));state.cantripUpgrade=j.spellcasting.bonusCantrip||"";}
@@ -704,5 +769,4 @@ bindStatic();update();
 })();
 </script>
 
-</body>
-</html>
+</body></html>
