@@ -1,4 +1,11 @@
-<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>body{margin:0;font-family:system-ui,sans-serif;font-size:14px}img{max-width:100%}[hidden]{display:none!important}</style>
+</head>
+<body>
 <title>Veteran Forge</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -214,8 +221,7 @@ table.ailt td{border-top:1px solid var(--line);padding:4px 6px;vertical-align:to
       <section class="card">
         <h2>JSON output <small>for downstream tools</small></h2>
         <div class="btns">
-          <button class="primary" id="btnSave" type="button">Save .json file</button>
-          <button id="btnCopy" type="button">Copy JSON</button>
+          <button class="primary" id="btnCopy" type="button">Copy JSON</button>
         </div>
         <p class="status" id="status"></p>
         <pre id="json" tabindex="0"></pre>
@@ -633,7 +639,6 @@ function bindStatic(){
   $("btnRandom").addEventListener("click",()=>{randomVeteran();update();hideExample();flash("A new veteran limps out of retirement.");});
   $("btnReset").addEventListener("click",()=>{Object.assign(state,blank());update();hideExample();flash("Blank sheet.");});
   $("btnCopy").addEventListener("click",copyJSON);
-  $("btnSave").addEventListener("click",saveJSON);
   $("importFile").addEventListener("change",importJSON);
 }
 function hideExample(){$("exampleNote").hidden=true;}
@@ -677,12 +682,6 @@ function copyJSON(){
   else selectJSON();
 }
 function selectJSON(){const r=document.createRange();r.selectNodeContents($("json"));const s=getSelection();s.removeAllRanges();s.addRange(r);flash("Copying isn't allowed here. The JSON is selected; press Ctrl/Cmd+C.");}
-let downloads=null;
-async function saveJSON(){
-  if(!downloads){flash("Saving files isn't available in this view. Use Copy JSON instead.");return;}
-  try{await downloads.save({filename:fileName(),data:$("json").textContent});flash("Saved "+fileName()+".");}
-  catch(e){const c=e&&e.code;flash(c==="declined"?"Save cancelled.":c==="rate_limited"?"A save prompt is already open.":"Couldn't save the file. Use Copy JSON instead.");if(c==="unavailable"||c==="not_granted")$("btnSave").hidden=true;}
-}
 function importJSON(e){
   const f=e.target.files&&e.target.files[0];if(!f)return;
   const r=new FileReader();
@@ -702,8 +701,8 @@ function importJSON(e){
 }
 
 bindStatic();update();
-if(window.claude&&window.claude.use){window.claude.use("downloads").then(n=>{downloads=n;if(!n)$("btnSave").hidden=true;}).catch(()=>{$("btnSave").hidden=true;});}
 })();
 </script>
 
-</body></html>
+</body>
+</html>
