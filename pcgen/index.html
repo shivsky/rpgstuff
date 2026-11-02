@@ -50,6 +50,7 @@ button.primary:hover{filter:brightness(1.1);background:var(--blood);color:var(--
 .ab input{text-align:center;font:600 1.1rem var(--mono);padding:4px;background:var(--paper)}
 .ab .mod{font:600 .85rem var(--mono);color:var(--blood);font-variant-numeric:tabular-nums}
 .ab .fin{font-size:.72rem;color:var(--muted)}
+.ab .roll{font:600 1.1rem var(--mono);padding:4px;background:var(--paper);border:1px solid var(--line);border-radius:4px}
 .ab .rb{color:var(--blood);font-weight:700}
 .picks{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:6px}
 .pick{display:flex;gap:8px;align-items:flex-start;border:1px solid var(--line);border-radius:4px;padding:7px 9px;font-size:.88rem;color:var(--ink);font-weight:400;cursor:pointer;flex-direction:row;background:var(--bg)}
@@ -384,11 +385,11 @@ function armorList(){const s=new Set();classParts().forEach(p=>CLASSES[p.cls].ar
 
 const state={};
 const blank=()=>({player:"",name:"",race:"Human",boosts:["STR"],traits:[],retainers:[],base:{STR:10,DEX:10,CON:10,INT:10,WIS:10,CHA:10},
-  inc:{4:"STR",6:"CON",8:"STR"},cls:"Warrior",arch:"Barbarian",mc:null,mcFeats:[],hpMethod:"average",hpRolls:[],
+  rolls:null,rollCount:0,inc:{4:"STR",6:"CON",8:"STR"},cls:"Warrior",arch:"Barbarian",mc:null,mcFeats:[],hpMethod:"average",hpRolls:[],
   archFeats:[],spells:{0:[],1:[],2:[],3:[],4:[],5:[]},cantripUpgrade:"",armor:"Heavy",shield:"no",sup:10,weapons:[],
   legend:"",faithful:"",faithfulProps:"",fortune:"",rusty:[],wisdom:WISDOM[0][0],ail:["Bad Knee","Old Wound"]});
 
-const example=()=>Object.assign(blank(),{player:"Shiv",name:"Old Brann",race:"Human",boosts:["STR"],traits:[],base:{STR:15,DEX:11,CON:14,INT:9,WIS:10,CHA:14},
+const example=()=>Object.assign(blank(),{player:"Shiv",name:"Old Brann",race:"Human",boosts:["STR"],traits:[],base:{STR:15,DEX:11,CON:14,INT:9,WIS:10,CHA:14},rolls:[15,14,14,11,10,9],rollCount:0,
   inc:{4:"STR",6:"CON",8:"STR"},cls:"Warrior",arch:"Fighter",archFeats:["+1 permanent AC","Phalanx: allies gain +1 AC when near you","+1 dmg all attacks"],
   armor:"Heavy",shield:"yes",sup:9,weapons:["Arming sword","Longspear","War bow"],
   legend:"Held the Ashgate alone for a night and a day",faithful:"Grudge, the notched arming sword",faithfulProps:"Never dulls or breaks. Once per session, a hit with it ignores an enemy's resistance or immunity.",fortune:"Bought a farm, lost it to the tax collector",
@@ -454,6 +455,8 @@ function derive(){
 }
 function validity(){
   const msgs=[], R=RACES[state.race], S=finalScores();
+  if(!state.rolls) msgs.push("Roll your six ability scores.");
+  else if(sortedDesc(AB.map(a=>state.base[a])).join()!==state.rolls.join()) msgs.push(`Ability scores don't match the rolled set (${state.rolls.join(", ")}). Only rolling and swapping can change them.`);
   classParts().forEach(p=>{const req=R.req[p.cls];
     if(req && withRace(req[0])<req[1]) msgs.push(`${state.race} ${p.cls} needs ${req[1]}+ ${req[0]} (has ${withRace(req[0])} after racial boost).`);});
   classParts().forEach((p,i)=>{const L=i?secArchLimit():primArchLimit(),n=p.feats.length,who=state.mc?` (${p.arch})`:"";
@@ -494,7 +497,7 @@ function buildJSON(){
     level:9,xp:100000,proficiencyBonus:x.prof,
     classes:x.parts.map(p=>({class:p.cls,archetype:p.lv>=3?p.arch:null,levels:p.lv})),
     multiclass:!!state.mc,
-    abilityMethod:{roll:RACES[state.race].dice+"d6 drop "+RACES[state.race].drop,racialBoosts:Object.fromEntries(AB.filter(a=>racial(a)).map(a=>[a,racial(a)])),humanBoost:RACES[state.race].choose?state.boosts[0]:null},
+    abilityMethod:{roll:RACES[state.race].dice+"d6 drop "+RACES[state.race].drop,rolls:state.rolls,rollCount:state.rollCount,racialBoosts:Object.fromEntries(AB.filter(a=>racial(a)).map(a=>[a,racial(a)])),humanBoost:RACES[state.race].choose?state.boosts[0]:null},
     racialTraits:RACES[state.race].choose?[]:(state.traits||[]).map(t=>({name:t,text:(TRAITS[state.race].find(z=>z[0]===t)||[])[1]})),
     abilities:Object.fromEntries(AB.map(a=>[a,{base:state.base[a],racial:racial(a),score:x.S[a],mod:x.M[a]}])),
     abilityIncreases:incSlots().map(s=>({slot:s.key,class:s.cls,level:s.level,ability:state.inc[s.key]})),
@@ -529,8 +532,7 @@ function renderForm(){
   opt($("fRace"),Object.keys(RACES),state.race);
   $("raceNote").textContent=RACES[state.race].note;
   const S=finalScores();
-  $("abilBox").innerHTML=AB.map(a=>`<div class="ab"><b>${a}</b><input id="ab_${a}" type="number" min="1" max="20" value="${state.base[a]}" aria-label="${a} rolled score"><span class="mod">${fmt(mod(S[a]))}</span><span class="fin">${racial(a)?`<b class="rb">+${racial(a)} race</b> · `:""}final ${S[a]}</span></div>`).join("");
-  AB.forEach(a=>{$("ab_"+a).addEventListener("change",e=>{state.base[a]=Math.max(1,Math.min(20,+e.target.value||1));update();});});
+  $("abilBox").innerHTML=AB.map(a=>`<div class="ab"><b>${a}</b><span class="roll" aria-label="${a} rolled score">${state.base[a]}</span><span class="mod">${fmt(mod(S[a]))}</span><span class="fin">${racial(a)?`<b class="rb">+${racial(a)} race</b> · `:""}final ${S[a]}</span></div>`).join("");
   $("boostRow").hidden=!RACES[state.race].choose;opt($("fBoost"),AB,state.boosts[0]);
   const TL=TRAITS[state.race];$("traitWrap").hidden=!TL;
   if(TL){state.traits=(state.traits||[]).filter(t=>TL.some(z=>z[0]===t));
@@ -641,6 +643,7 @@ function renderSheet(){
      <h2 style="font-size:1.7rem">${esc(j.name||"Unnamed veteran")}</h2><span class="tag">Level 9 · ${esc(j.race)} ${state.mc?j.classes.map(c=>`${esc(c.class)} ${c.levels}${c.archetype?` (${esc(c.archetype)})`:""}`).join(" / "):`${esc(j.class)} · ${esc(j.archetype)}`}</span>
    </div>
    <p class="note" style="margin-top:-8px">Player ${esc(j.player||"—")}${j.veteran.legend?` · “${esc(j.veteran.legend)}”`:""}</p>
+   ${state.rollCount>1?`<p class="note">Stats rolled ${state.rollCount} times on this sheet.</p>`:""}
    ${v.length?`<p class="warn">${v.map(esc).join("<br>")}</p>`:`<p class="status">Sheet complete. Ready to export.</p>`}
    <div class="kv">${AB.map(a=>`<div><span>${a}</span><strong>${j.abilities[a].score} (${fmt(j.abilities[a].mod)})</strong></div>`).join("")}</div>
    <div class="kv">
@@ -707,7 +710,8 @@ function bindStatic(){
 function hideExample(){$("exampleNote").hidden=true;}
 function rollStat(n,drop){const r=Array.from({length:n},()=>d(6)).sort((a,b)=>b-a);return r.slice(0,n-drop).reduce((a,b)=>a+b,0);}
 function rollSix(){const R=RACES[state.race];return AB.map(()=>rollStat(R.dice,R.drop));}
-function rollAbilities(){const r=rollSix();AB.forEach((a,i)=>state.base[a]=r[i]);}
+const sortedDesc=a=>[...a].sort((x,y)=>y-x);
+function rollAbilities(){const r=rollSix();state.rolls=sortedDesc(r);state.rollCount=(state.rollCount||0)+1;AB.forEach((a,i)=>state.base[a]=r[i]);}
 function rollAilments(){let a=d(100)-1,b=d(100)-1;while(b===a)b=d(100)-1;state.ail=[AILMENTS[a][0],AILMENTS[b][0]];}
 const pick=a=>a[Math.floor(Math.random()*a.length)];
 function randomVeteran(){
@@ -717,9 +721,9 @@ function randomVeteran(){
   state.cls=pick(Object.keys(CLASSES));
   {const prime0={Warrior:"STR",Thief:"DEX",Zealot:"WIS",Mage:"INT"}[state.cls];
    const order=[prime0,"CON",...AB.filter(a=>a!==prime0&&a!=="CON")];
-   const r=rollSix().sort((a,b)=>b-a);order.forEach((a,i)=>state.base[a]=r[i]);
+   const r=rollSix().sort((a,b)=>b-a);order.forEach((a,i)=>state.base[a]=r[i]);state.rolls=r.slice();state.rollCount=1;
    state.boosts=[prime0];if(TRAITS[state.race])state.traits=[...TRAITS[state.race]].sort(()=>Math.random()-.5).slice(0,2).map(t=>t[0]);
-   const rq=RACES[state.race].req[state.cls];if(rq&&withRace(rq[0])<rq[1])state.base[rq[0]]=rq[1]-racial(rq[0]);}
+   const rq=RACES[state.race].req[state.cls];if(rq&&withRace(rq[0])<rq[1]){const need=rq[1]-racial(rq[0]);state.base[rq[0]]=need;state.rolls=sortedDesc(AB.map(a=>state.base[a]));}}
   const C=CLASSES[state.cls];
   state.arch=pick(Object.keys(C.arch));
   const f=[...C.arch[state.arch].feats].sort(()=>Math.random()-.5);state.archFeats=f.slice(0,primArchLimit());
@@ -753,7 +757,7 @@ function importJSON(e){
     Object.assign(state,blank(),{player:j.player||"",name:j.name||"",race:j.race,cls:j.class,arch:j.archetype,
       mc:(j.classes&&j.classes.length>1)?{cls:j.classes[1].class,arch:j.classes[1].archetype||Object.keys(CLASSES[j.classes[1].class].arch)[0],levels:j.classes[1].levels}:null,
       mcFeats:(j.classAbilities||[]).filter(f=>f.source==="archetype"&&j.classes&&j.classes.length>1&&f.class===j.classes[1].class).map(f=>stripLvNote(f.text)),
-      boosts:[(j.abilityMethod&&(j.abilityMethod.humanBoost||(j.abilityMethod.humanBoosts||[])[0]))||"STR"],traits:(j.racialTraits||[]).map(t=>t.name),base:Object.fromEntries(AB.map(a=>[a,j.abilities[a].base])),inc:Object.fromEntries(j.abilityIncreases.map(i=>[i.slot||String(i.level),i.ability])),
+      boosts:[(j.abilityMethod&&(j.abilityMethod.humanBoost||(j.abilityMethod.humanBoosts||[])[0]))||"STR"],traits:(j.racialTraits||[]).map(t=>t.name),rolls:(j.abilityMethod&&j.abilityMethod.rolls)||null,rollCount:(j.abilityMethod&&j.abilityMethod.rollCount)||0,base:Object.fromEntries(AB.map(a=>[a,j.abilities[a].base])),inc:Object.fromEntries(j.abilityIncreases.map(i=>[i.slot||String(i.level),i.ability])),
       hpMethod:j.hp.method==="roll"?"roll":"average",hpRolls:j.hp.method==="roll"?j.hp.levelUps.map(v=>v-mod(j.abilities.CON.score)):[],
       archFeats:(j.classAbilities?j.classAbilities.filter(f=>f.source==="archetype"&&(!f.class||f.class===j.class)):(j.archetypeFeatures||[])).map(f=>stripLvNote(f.text)),armor:j.ac.armor,shield:j.ac.shield?"yes":"no",sup:j.limits.supplyCarried,
       retainers:(j.retainers||[]).map(r=>r.category),weapons:j.equipment.weapons||[],legend:j.veteran.legend||"",faithful:(typeof j.veteran.oldFaithful==="object"?j.veteran.oldFaithful.name:j.veteran.oldFaithful)||"",faithfulProps:(j.veteran.oldFaithful&&j.veteran.oldFaithful.properties)||"",fortune:j.veteran.spentFortune||"",
